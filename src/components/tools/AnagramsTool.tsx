@@ -27,7 +27,8 @@ export const AnagramsTool = (props: ToolProps) => {
   const [result, setResult] = createSignal<AnagramResult>();
   const [error, setError] = createSignal('');
 
-  const light = () => ed.currentLight();
+  /** the selected answer: a light, or linked lights read as one */
+  const light = () => ed.currentEntry();
   const lightWord = createMemo(() => {
     const l = light();
     if (!l) return '';
@@ -72,7 +73,7 @@ export const AnagramsTool = (props: ToolProps) => {
     return [...byCount.entries()].sort((a, b) => a[0] - b[0]).map(([count, items]) => ({ count, items }));
   });
 
-  const lightLabel = () => (light() ? `${light()!.number} ${light()!.dir}` : '');
+  const lightLabel = () => (light() ? `${light()!.label} ${light()!.lights[0].dir}` : '');
 
   return (
     <div class={styles.tool}>

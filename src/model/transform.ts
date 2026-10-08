@@ -14,7 +14,8 @@ export interface Transformed extends GridParts {
 /**
  * rotate or mirror the grid. letters travel with their cells, and bars
  * with the edge they sit on. a clue follows its light when the light
- * still reads the same way; lights that end up reversed lose their clue.
+ * still reads the same way; lights that end up reversed lose their clue
+ * (and drop out of any linked clue).
  */
 export const transformGrid = (grid: GridParts, transform: Transform): Transformed => {
   const { rows, cols, cells } = grid;
@@ -54,14 +55,21 @@ export const transformGrid = (grid: GridParts, transform: Transform): Transforme
     }
   }
 
+  // old light key -> new key, for lights that still read the same way
   const newLights = new Map(
     computeLights({ rows: newRows, cols: newCols, cells: next }).lights.map(l => [l.cells.join(), l.key]),
   );
-  const clues: Partial<Record<LightKey, ClueEntry>> = {};
+  const rekey = new Map<LightKey, LightKey>();
   for (const light of computeLights(grid).lights) {
-    const entry = grid.clues[light.key];
     const key = newLights.get(light.cells.map(i => moved[i]).join());
-    if (entry && key) clues[key] = entry;
+    if (key) rekey.set(light.key, key);
+  }
+  const clues: Partial<Record<LightKey, ClueEntry>> = {};
+  for (const [oldKey, key] of rekey) {
+    const entry = grid.clues[oldKey];
+    if (!entry) continue;
+    const links = entry.links?.flatMap(k => rekey.get(k) ?? []);
+    clues[key] = links ? { ...entry, links } : entry;
   }
 
   return { rows: newRows, cols: newCols, cells: next, clues, moved };

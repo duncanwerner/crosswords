@@ -1,4 +1,5 @@
 import { For, Show, createSignal, onSettled, untrack } from 'solid-js';
+import { loadClueLog } from '../state/clue-log';
 import { createEditor, EditorContext } from '../state/editor';
 import { loadPuzzle } from '../state/library';
 import { openLibrary } from '../state/route';
@@ -154,6 +155,7 @@ const EditorView = (props: { editor: ReturnType<typeof createEditor> }) => {
 
   // undo/redo everywhere except text fields, which keep their native undo
   onSettled(() => {
+    void loadClueLog();
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || isTextField(e.target)) return;
       const key = e.key.toLowerCase();

@@ -24,6 +24,24 @@ describe('storage', () => {
     expect(back.clues).toEqual({ '0,0,A': { text: 'Clue', enumeration: '2,3' } });
   });
 
+  it('keeps links to lights that exist, and entries that only hold links', () => {
+    const store = createStorage(memory());
+    const p = createPuzzle({ rows: 5, cols: 5, style: 'blocked', symmetry: 'rotational', template: 'lattice' });
+    p.clues['0,0,A'] = { text: '', enumeration: '', links: ['2,0,A', '1,1,A'] };
+    p.clues['0,2,D'] = { text: '', enumeration: '', links: ['1,1,D'] };
+    store.savePuzzle(p);
+    expect(store.loadPuzzle(p.id)!.clues).toEqual({ '0,0,A': { text: '', enumeration: '', links: ['2,0,A'] } });
+  });
+
+  it('repairs clue entries', () => {
+    const p = migrate({ id: 'x', rows: 1, cols: 1, clues: {
+      '0,0,A': { text: 'ok', links: ['0,1,D', 7, 'junk'] },
+      '0,0,D': 'junk',
+      'nope': { text: 'x' },
+    } })!;
+    expect(p.clues).toEqual({ '0,0,A': { text: 'ok', enumeration: '', links: ['0,1,D'] } });
+  });
+
   it('repairs partial data and rejects junk', () => {
     const p = migrate({ id: 'x', rows: 2, cols: 2, cells: [{ block: true }, { letter: 'b' }] })!;
     expect(p.cells).toHaveLength(4);

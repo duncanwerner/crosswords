@@ -46,7 +46,8 @@ export const GridView = () => {
   const barred = () => p.style === 'barred';
   const design = () => ed.mode() === 'design';
 
-  const highlight = createMemo(() => new Set(ed.currentLight()?.cells ?? []));
+  /** the selected answer: its light, and any lights linked with it */
+  const highlight = createMemo(() => new Set(ed.currentEntry()?.cells ?? []));
 
   /** an auto-fill preview that will replace earlier auto letters hides them */
   const hideAuto = () => !!ed.preview()?.replaceAuto;
@@ -62,11 +63,14 @@ export const GridView = () => {
   /** word breaks and hyphens from valid enumerations */
   const breakMarks = createMemo(() => {
     const marks: Array<{ cell: number; dir: Direction; type: ',' | '-' }> = [];
-    for (const light of ed.map().lights) {
-      const text = p.clues[light.key]?.enumeration ?? '';
-      if (validate(text, light.length) !== 'ok') continue;
+    for (const entry of ed.entries().list) {
+      const text = p.clues[entry.key]?.enumeration ?? '';
+      if (validate(text, entry.cells.length) !== 'ok') continue;
+      // where each letter of the answer sits: its light, and whether it ends that light
+      const at = entry.lights.flatMap(l => l.cells.map((cell, i) => ({ cell, dir: l.dir, last: i === l.length - 1 })));
       for (const b of breaks(text)) {
-        if (b.after < light.length - 1) marks.push({ cell: light.cells[b.after], dir: light.dir, type: b.type });
+        // a break where one linked light ends and the next begins needs no mark
+        if (!at[b.after].last) marks.push({ cell: at[b.after].cell, dir: at[b.after].dir, type: b.type });
       }
     }
     return marks;

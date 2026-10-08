@@ -21,6 +21,11 @@ export interface ClueEntry {
   text: string;
   /** e.g. "3,4" or "4-5"; '' means the default, the light length */
   enumeration: string;
+  /**
+   * linked clues: the lights this answer continues into, in order. set on
+   * the first light, whose clue and enumeration cover the whole answer.
+   */
+  links?: LightKey[];
 }
 
 export const SCHEMA_VERSION = 1;

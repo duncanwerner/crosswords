@@ -53,12 +53,16 @@ export const createPuzzle = (options: NewPuzzleOptions): Puzzle => {
 export const clampSize = (n: number) =>
   Math.max(MIN_SIZE, Math.min(MAX_SIZE, Math.round(Number.isFinite(n) ? n : 15)));
 
-/** drop clues whose light no longer exists (or which are empty) */
+/** drop clues whose light no longer exists (or which are empty), and links to missing lights */
 export const pruneClues = (puzzle: Pick<Puzzle, 'rows' | 'cols' | 'cells' | 'clues'>) => {
   const keys = new Set(computeLights(puzzle).lights.map(l => l.key));
   const clues: Partial<Record<LightKey, ClueEntry>> = {};
   for (const [key, entry] of Object.entries(puzzle.clues) as Array<[LightKey, ClueEntry | undefined]>) {
-    if (entry && keys.has(key) && (entry.text || entry.enumeration)) clues[key] = entry;
+    if (!entry || !keys.has(key)) continue;
+    const links = entry.links?.filter(k => keys.has(k) && k !== key);
+    const { links: _, ...rest } = entry;
+    const next: ClueEntry = links?.length ? { ...rest, links } : rest;
+    if (next.text || next.enumeration || next.links) clues[key] = next;
   }
   return clues;
 };

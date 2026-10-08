@@ -1,4 +1,5 @@
-import { For, Show, createSignal, onSettled } from 'solid-js';
+import { For, Show, createSignal, onSettled, useContext } from 'solid-js';
+import { EditorContext } from '../../state/editor';
 import { DICTIONARIES, loadWords, setWordSettings, settings, status } from '../../state/words';
 import type { Dictionary } from '../../words/protocol';
 import { TOOLS } from './registry';
@@ -34,6 +35,9 @@ export const ToolDock = (props: { collapsed: boolean; onToggle: () => void }) =>
       // preference only
     }
   };
+
+  const ed = useContext(EditorContext);
+  ed.registerShowTool(setTab);
 
   onSettled(() => {
     if (status().state === 'idle') loadWords();

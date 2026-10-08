@@ -3,6 +3,7 @@ import { type GridShape, computeLights, lightAt } from '../model/lights';
 import { type Selection, settle } from '../model/navigation';
 import { normalizeBlocked } from '../model/puzzle';
 import { type WarningKind, computeStats } from '../model/stats';
+import { type Entry, type LinkMap, computeEntries } from '../model/links';
 import { type Feature, symmetricPartner } from '../model/symmetry';
 import { type Transform, transformGrid } from '../model/transform';
 import type { ClueEntry, Direction, Light, LightKey, Puzzle, Symmetry } from '../model/types';
@@ -61,10 +62,38 @@ export const createEditor = (initial: Puzzle) => {
     gridFocus = fn;
   };
 
+  /** likewise the tools dock, so a clue row can open a helper */
+  let toolShow = (_id: string) => {};
+  const registerShowTool = (fn: (id: string) => void) => {
+    toolShow = fn;
+  };
+
   const currentLight = createMemo(() => {
     if (mode() !== 'fill') return undefined;
     const sel = selection();
     return lightAt(map(), sel.cell, sel.dir);
+  });
+
+  /** each head light's links; only changes when a link does, not as clue text is typed */
+  const links = createMemo<LinkMap>(
+    () => {
+      const out: LinkMap = {};
+      for (const light of map().lights) {
+        const keys = puzzle.clues[light.key]?.links;
+        if (keys?.length) out[light.key] = [...keys];
+      }
+      return out;
+    },
+    { equals: (a, b) => JSON.stringify(a) === JSON.stringify(b), name: 'links' },
+  );
+
+  /** answers: single lights, and chains of linked lights */
+  const entries = createMemo(() => computeEntries(map(), links()), { name: 'entries' });
+
+  /** the answer the selected light belongs to */
+  const currentEntry = createMemo<Entry | undefined>(() => {
+    const light = currentLight();
+    return light && entries().byLight.get(light.key);
   });
 
   // --- history ---------------------------------------------------------
@@ -221,15 +250,16 @@ export const createEditor = (initial: Puzzle) => {
     }, group);
   };
 
-  const fillLight = (light: Light, letters: string, enumeration?: string) => {
+  /** fill a light or a whole linked entry; the enumeration goes on its clue */
+  const fillLight = (target: Pick<Light | Entry, 'key' | 'cells'>, letters: string, enumeration?: string) => {
     commit(draft => {
-      light.cells.forEach((cell, i) => {
+      target.cells.forEach((cell, i) => {
         draft.cells[cell].letter = letters[i] || '';
         draft.cells[cell].auto = false;
       });
       if (enumeration !== undefined) {
-        const entry = draft.clues[light.key] ?? { text: '', enumeration: '' };
-        draft.clues[light.key] = { ...entry, enumeration };
+        const entry = draft.clues[target.key] ?? { text: '', enumeration: '' };
+        draft.clues[target.key] = { ...entry, enumeration };
       }
     });
   };
@@ -276,6 +306,14 @@ export const createEditor = (initial: Puzzle) => {
     }, `clue:${key}:${Object.keys(patch).join()}`, false);
   };
 
+  /** link a head light to the lights its answer continues into ([] unlinks) */
+  const setLinks = (key: LightKey, keys: LightKey[]) => {
+    commit(draft => {
+      const { links: _, ...entry } = draft.clues[key] ?? { text: '', enumeration: '' };
+      draft.clues[key] = keys.length ? { ...entry, links: keys } : entry;
+    }, undefined, false);
+  };
+
   /** the block list, as a plain array that only changes when its contents do */
   const blocked = createMemo(() => [...puzzle.blocked], { equals: (a, b) => a.join() === b.join(), name: 'blocked' });
 
@@ -293,13 +331,14 @@ export const createEditor = (initial: Puzzle) => {
 
   return {
     puzzle, map, stats, filled, autoFilled, gridVersion, mode, setMode, selection, select, selectLight, setSelection,
-    currentLight, flagged, flaggedKind, setFlaggedKind,
+    currentLight, entries, currentEntry, flagged, flaggedKind, setFlaggedKind,
     registerGridFocus, focusGrid: () => gridFocus(),
+    registerShowTool, showTool: (id: string) => toolShow(id),
     preview, setPreview,
     canUndo: () => historySize().undo > 0,
     canRedo: () => historySize().redo > 0,
     undo, redo,
-    toggleFeature, transform, setLetter, fillLight, clearLetters, applyFill, clearAutoFill, setClue, setTitle, setSetter, setSymmetry,
+    toggleFeature, transform, setLetter, fillLight, clearLetters, applyFill, clearAutoFill, setClue, setLinks, setTitle, setSetter, setSymmetry,
     blocked, blockWords, unblockWord, clearBlocked,
     saveNow,
   };

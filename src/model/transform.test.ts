@@ -64,3 +64,13 @@ describe('transformGrid', () => {
     expect(transformGrid(g, 'flipV').clues).toEqual({ '2,0,A': { text: 'top', enumeration: '' } });
   });
 });
+
+describe('transformGrid links', () => {
+  it('moves links with their lights and drops reversed ones', () => {
+    const g = { ...gridFrom(['...', '.#.', '...']), clues: {
+      '0,0,A': { text: 'linked', enumeration: '', links: ['2,0,A' as const, '0,0,D' as const] },
+    } };
+    // mirroring top-bottom: rows swap, the left column (0,0,D) now reads upwards
+    expect(transformGrid(g, 'flipV').clues).toEqual({ '2,0,A': { text: 'linked', enumeration: '', links: ['0,0,A'] } });
+  });
+});

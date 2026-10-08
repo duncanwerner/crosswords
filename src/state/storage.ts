@@ -1,6 +1,6 @@
 import { toLetters } from '../model/ascii';
 import { normalizeBlocked, pruneClues } from '../model/puzzle';
-import { type Cell, type Puzzle, SCHEMA_VERSION, emptyCell } from '../model/types';
+import { type Cell, type ClueEntry, type LightKey, type Puzzle, SCHEMA_VERSION, emptyCell } from '../model/types';
 
 /**
  * localStorage persistence. the index holds lightweight summaries so the
@@ -43,6 +43,26 @@ export const summarize = (p: Puzzle): PuzzleSummary => ({
   thumb: p.cells.map(c => (c.block ? '#' : '.')).join(''),
 });
 
+const KEY = /^\d+,\d+,[AD]$/;
+
+/** clue entries with the right field types; anything else is dropped */
+const migrateClues = (raw: unknown): Puzzle['clues'] => {
+  const clues: Puzzle['clues'] = {};
+  if (!raw || typeof raw !== 'object') return clues;
+  for (const [key, value] of Object.entries(raw)) {
+    if (!KEY.test(key) || !value || typeof value !== 'object') continue;
+    const v = value as Partial<ClueEntry>;
+    const entry: ClueEntry = {
+      text: typeof v.text === 'string' ? v.text : '',
+      enumeration: typeof v.enumeration === 'string' ? v.enumeration : '',
+    };
+    const links = Array.isArray(v.links) ? v.links.filter(k => typeof k === 'string' && KEY.test(k)) : [];
+    if (links.length) entry.links = links;
+    clues[key as LightKey] = entry;
+  }
+  return clues;
+};
+
 /**
  * bring stored data up to the current schema. there is only v1 so far;
  * this also repairs missing fields so a hand-edited file can't crash us.
@@ -72,7 +92,7 @@ export const migrate = (raw: unknown): Puzzle | undefined => {
     style: src.style === 'barred' ? 'barred' : 'blocked',
     symmetry: src.symmetry === 'none' ? 'none' : 'rotational',
     cells,
-    clues: src.clues && typeof src.clues === 'object' ? { ...src.clues } : {},
+    clues: migrateClues(src.clues),
     blocked: Array.isArray(src.blocked) ? normalizeBlocked(src.blocked.filter(w => typeof w === 'string')) : [],
   };
 };

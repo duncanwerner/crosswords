@@ -14,12 +14,21 @@ backups).
   survive renumbering), and enumerations like `(3,4)` or `(4-5)` drawn in the
   grid. Typing an answer like "man-of-war" fills the light and sets the
   enumeration.
+- **Linked clues**: link a light to the lights its answer continues into
+  (type "5" or "12d" in the clue's Linked field) for clues like `1/5`. The
+  first light holds the clue and one enumeration for the whole answer; the
+  others read "See 1". The answer box, Words and Anagrams work on the whole
+  answer (auto-fill treats the parts as separate lights).
 - **Tools dock** under the clue list, so a helper's results stay visible
   while you write a clue:
   - Words: fill suggestions ranked by how they leave the crossings
   - Anagrams: one- and multi-word
   - Regex: dictionary search
   - Auto-fill: preview, then apply; your own letters are kept
+  - Clue log: clues you've saved (**Save to log** on a filled, clued
+    answer), searchable across every puzzle. A clue row says "Clued once
+    before" when the log already has that answer. Kept in IndexedDB, with
+    its own export/import (puzzle exports don't include it).
   - Blocked: a per-puzzle list of words never to offer
 - Undo/redo for every edit; resizable panels; light and dark themes.
 
@@ -32,11 +41,13 @@ npm run build      # typecheck + production build
 
 ## Layout
 
-- `src/model/` – pure TS, no Solid: numbering (`lights.ts`), symmetry,
+- `src/model/` – pure TS, no Solid: numbering (`lights.ts`), linked
+  clues (`links.ts`), symmetry, grid rotate/flip (`transform.ts`),
   enumerations, navigation, grid stats, puzzle factory. Unit tested.
 - `src/state/` – Solid state: `library.ts` (global puzzle index),
   `editor.ts` (one open puzzle: store, memos, undo/redo, autosave),
-  `storage.ts` (localStorage + schema migration), `route.ts` (hash routing).
+  `storage.ts` (localStorage + schema migration), `route.ts` (hash routing),
+  `clue-log.ts` (the clue log in IndexedDB, synced between tabs).
 - `src/components/` – UI. `GridView` is an SVG grid with a hidden input for
   keyboard capture. `tools/` is the helper dock under the clue list (Words,
   Anagrams, Regex, Auto-fill, Blocked); add a helper by writing a component

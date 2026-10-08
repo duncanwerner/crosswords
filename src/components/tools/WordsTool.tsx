@@ -33,25 +33,31 @@ export const WordsTool = (props: ToolProps) => {
 
   onSettled(() => () => ed.setPreview(undefined));
 
-  /** the current light, its crossings at empty cells, and words already used */
+  /**
+   * the current answer (a light, or linked lights read as one), its
+   * crossings at empty cells, and words already used
+   */
   const query = createMemo<Query | undefined>(
     () => {
-      const light = ed.currentLight();
-      if (!light) return undefined;
+      const entry = ed.currentEntry();
+      if (!entry) return undefined;
       const map = ed.map();
       const cells = ed.puzzle.cells;
-      const patternOf = (l: Light) => l.cells.map(i => cells[i].letter || '.').join('');
+      const patternOf = (l: Pick<Light, 'cells'>) => l.cells.map(i => cells[i].letter || '.').join('');
       const crossings: Crossing[] = [];
-      light.cells.forEach((cell, index) => {
-        if (cells[cell].letter) return;
-        const cross = lightAt(map, cell, light.dir === 'across' ? 'down' : 'across');
-        if (cross) crossings.push({ index, pattern: patternOf(cross), position: cross.cells.indexOf(cell) });
-      });
+      let index = 0;
+      for (const light of entry.lights) {
+        for (const cell of light.cells) {
+          const cross = !cells[cell].letter && lightAt(map, cell, light.dir === 'across' ? 'down' : 'across');
+          if (cross) crossings.push({ index, pattern: patternOf(cross), position: cross.cells.indexOf(cell) });
+          index++;
+        }
+      }
       const used = map.lights
-        .filter(l => l.key !== light.key)
+        .filter(l => !entry.lights.includes(l))
         .map(patternOf)
         .filter(w => !w.includes('.'));
-      return { key: light.key, cells: light.cells, pattern: patternOf(light), crossings, used };
+      return { key: entry.key, cells: entry.cells, pattern: patternOf(entry), crossings, used };
     },
     { equals: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
   );
@@ -82,10 +88,10 @@ export const WordsTool = (props: ToolProps) => {
   };
 
   const choose = (s: Suggestion) => {
-    const light = ed.currentLight();
-    if (!light) return;
+    const entry = ed.currentEntry();
+    if (!entry) return;
     ed.setPreview(undefined);
-    ed.fillLight(light, s.word);
+    ed.fillLight(entry, s.word);
     ed.focusGrid();
   };
 
@@ -109,7 +115,7 @@ export const WordsTool = (props: ToolProps) => {
         {q => (
           <div class={shared.info}>
             <strong aria-label="Pattern">{q().pattern.replace(/\./g, '·')}</strong>
-            <span>{ed.currentLight()?.number} {ed.currentLight()?.dir}</span>
+            <span>{ed.currentEntry()?.label} {ed.currentEntry()?.lights[0].dir}</span>
             <Show when={current()}>
               {r => (
                 <span>

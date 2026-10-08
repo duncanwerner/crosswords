@@ -37,7 +37,7 @@
 
 .row {
   display: grid;
-  grid-template-columns: 28px 1fr auto;
+  grid-template-columns: minmax(28px, max-content) 1fr auto;
   gap: 2px 8px;
   padding: 6px 16px 6px 12px;
   border-left: 4px solid transparent;
@@ -45,7 +45,7 @@
 }
 .row.active { background: var(--accent-soft); border-left-color: var(--accent); }
 
-.number { font-weight: 700; padding-top: 5px; text-align: right; font-variant-numeric: tabular-nums; }
+.number { font-weight: 700; padding-top: 5px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .text {
   width: 100%;
@@ -65,6 +65,8 @@
 .enum { display: flex; align-items: center; padding-top: 4px; color: var(--muted); }
 .enum input {
   width: 4.5ch;
+  min-width: 4.5ch;
+  field-sizing: content;
   padding: 1px 2px;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -76,12 +78,12 @@
 .enum input:focus { outline: none; border-color: var(--focus); background: var(--surface); }
 .enum.bad, .enum.bad input { color: var(--danger); }
 
-.answerLine { grid-column: 2 / 4; display: flex; gap: 8px; align-items: center; padding-left: 6px; }
+.answerLine { grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; padding-left: 6px; }
 .pattern { font: 600 12px/1 var(--font-grid); letter-spacing: 0.12em; color: var(--muted); white-space: nowrap; }
 .pattern.complete { color: var(--text); }
 .answer {
   flex: 1;
-  min-width: 0;
+  min-width: 16ch;
   height: 24px;
   padding: 0 6px;
   border: 1px solid transparent;
@@ -94,3 +96,58 @@
 .row:hover .answer::placeholder, .row.active .answer::placeholder, .answer:focus::placeholder { opacity: 1; }
 .answer:focus { outline: none; border-color: var(--focus); background: var(--surface); }
 .error { grid-column: 2 / 4; padding-left: 6px; color: var(--danger); font-size: 12px; }
+
+/* linked clues */
+.linkButton {
+  flex: none;
+  padding: 0 6px;
+  height: 22px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+}
+.row:hover .linkButton, .row.active .linkButton, .linkButton:focus-visible, .linkLine .linkButton { opacity: 1; }
+.linkButton:hover { border-color: var(--border); color: var(--text); }
+.linkLine { grid-column: 2 / 4; display: flex; gap: 8px; align-items: center; padding-left: 6px; font-size: 12px; color: var(--muted); }
+.linkLine label { display: flex; gap: 6px; align-items: center; }
+.links {
+  width: 14ch;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  font-size: 12px;
+}
+.links:focus { outline: none; border-color: var(--focus); background: var(--surface); }
+.see { align-items: center; }
+.seeLink {
+  justify-self: start;
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-style: italic;
+  cursor: pointer;
+}
+.seeLink:hover { color: var(--text); text-decoration: underline; }
+
+/* clue log */
+.inLog, .inLog:disabled { opacity: 1; color: var(--ok); cursor: default; }
+.inLog:hover { border-color: transparent; color: var(--ok); }
+.earlier {
+  flex: none;
+  padding: 0 6px;
+  height: 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+}
+.earlier:hover { text-decoration: underline; }
