@@ -9,3 +9,5 @@
 .meter div { height: 100%; background: var(--accent); transition: width 150ms; }
 
 .blocked { text-decoration: line-through; color: var(--muted); }
+
+.required { padding: 0 16px 8px; }

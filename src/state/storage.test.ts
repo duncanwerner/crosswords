@@ -49,6 +49,8 @@ describe('storage', () => {
     expect(p.style).toBe('blocked');
     expect(p.blocked).toEqual([]);
     expect(migrate({ id: 'y', rows: 1, cols: 1, blocked: ['nit', 'ÉLS', 'nit', 3] })!.blocked).toEqual(['ELS', 'NIT']);
+    expect(p.required).toEqual([]);
+    expect(migrate({ id: 'y', rows: 1, cols: 1, required: ['trump', 'Obama', 'trump', 3] })!.required).toEqual(['OBAMA', 'TRUMP']);
     expect(migrate({ rows: 2 })).toBeUndefined();
     expect(migrate({ id: 'x', rows: 2, cols: 2, schema: 99 })).toBeUndefined();
   });

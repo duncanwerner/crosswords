@@ -1,4 +1,5 @@
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, flush, onSettled, useContext } from 'solid-js';
+import { parseWordList } from '../../model/puzzle';
 import { EditorContext } from '../../state/editor';
 import { DICTIONARIES, settings } from '../../state/words';
 import { words } from '../../words/client';
@@ -30,6 +31,33 @@ const seconds = (ms: number) => (ms < 1000 ? `${Math.max(1, Math.round(ms))} ms`
 export const FillTool = (props: ToolProps) => {
   const ed = useContext(EditorContext);
   const [state, setState] = createSignal<State>({ kind: 'idle' });
+  const [requiredText, setRequiredText] = createSignal('');
+  const pendingRequired = createMemo(() => parseWordList(requiredText()));
+
+  const addRequired = (e: SubmitEvent) => {
+    e.preventDefault();
+    if (!pendingRequired().length) return;
+    ed.requireWords(pendingRequired());
+    setRequiredText('');
+  };
+
+  /** why a required word can't be placed, or that it's already in */
+  const requiredNotes = createMemo(() => {
+    const cells = ed.puzzle.cells;
+    const lengths = new Set<number>();
+    const inGrid = new Set<string>();
+    for (const light of ed.map().lights) {
+      lengths.add(light.length);
+      const word = light.cells.map(i => cells[i].letter).join('');
+      if (word.length === light.length) inGrid.add(word);
+    }
+    const notes = new Map<string, { text: string; warn: boolean }>();
+    for (const word of ed.required()) {
+      if (inGrid.has(word)) notes.set(word, { text: 'in grid', warn: false });
+      else if (!lengths.has(word.length)) notes.set(word, { text: `no ${word.length}-letter light`, warn: true });
+    }
+    return notes;
+  });
 
   const done = () => {
     const s = state();
@@ -135,6 +163,7 @@ export const FillTool = (props: ToolProps) => {
         cols: ed.puzzle.cols,
         shape: cells.map(c => ({ block: c.block, barRight: c.barRight, barBottom: c.barBottom })),
         letters,
+        required: ed.required(),
         seed: (Math.random() * 2 ** 31) | 0,
         timeMs: timeLimit() * 1000,
         blocked: ed.blocked(),
@@ -213,9 +242,39 @@ export const FillTool = (props: ToolProps) => {
           </label>
         </Show>
       </div>
+      <form class={styles.bar} onSubmit={addRequired}>
+        <input
+          class={['field', styles.grow, styles.mono, styles.upper]}
+          placeholder="Required words (spaces or commas between)"
+          aria-label="Required words"
+          autocomplete="off"
+          spellcheck={false}
+          value={requiredText()}
+          onInput={e => setRequiredText(e.currentTarget.value)}
+        />
+        <button class="btn" type="submit" disabled={!pendingRequired().length}>Require</button>
+      </form>
+      <Show when={ed.required().length}>
+        <div class={[styles.chips, fill.required]}>
+          <For each={ed.required()}>
+            {word => (
+              <span
+                class={[styles.blockedChip, { [styles.warn]: requiredNotes().get(word)?.warn }]}
+                title={requiredNotes().get(word)?.warn ? `${word} won't fit: ${requiredNotes().get(word)!.text}` : undefined}
+              >
+                {word}
+                <Show when={requiredNotes().get(word)}>{note => <span class={styles.tag}>{note().text}</span>}</Show>
+                <button class={styles.remove} aria-label={`Don't require ${word}`} title="Don't require" onClick={() => ed.unrequireWord(word)}>×</button>
+              </span>
+            )}
+          </For>
+        </div>
+      </Show>
       <div class={styles.info}>
         <span>
-          Fills empty squares from the {dictionaryName()} dictionary. No word repeats
+          Fills empty squares from the {dictionaryName()} dictionary
+          <Show when={ed.required().length}>, including every required word</Show>
+          . No word repeats
           <Show when={ed.blocked().length}>, none of your {ed.blocked().length} blocked words</Show>
           , and your own letters stay put.
         </span>
@@ -302,6 +361,7 @@ export const FillTool = (props: ToolProps) => {
             <Match when={true}>
               <div class={styles.help}>
                 <p>The fill can use any word in the dictionary, so some will be obscure. The Standard dictionary gives more familiar words; block any you don't want and try another fill.</p>
+                <p>Required words must all go in, each in a light of its own, even if they aren't in the dictionary. If they can't, the fill stops and says why.</p>
                 <p>Auto-filled letters are shown in blue. Typing over one makes it yours, and <strong>Commit</strong> makes the selected word yours, so later fills keep it. That works on a previewed fill too.</p>
               </div>
             </Match>

@@ -24,7 +24,8 @@ backups).
   - Words: fill suggestions ranked by how they leave the crossings
   - Anagrams: one- and multi-word
   - Regex: dictionary search
-  - Auto-fill: preview, then apply; your own letters are kept
+  - Auto-fill: preview, then apply; your own letters are kept. Per-puzzle
+    required words must all go in, or the fill stops and says why
   - Clue log: clues you've saved (**Save to log** on a filled, clued
     answer), searchable across every puzzle. A clue row says "Clued once
     before" when the log already has that answer. Kept in IndexedDB, with
@@ -61,7 +62,8 @@ npm run build      # typecheck + production build
   vanish from every helper (and from crossing counts) without per-tool code.
 - `src/words/fill.ts` – the auto-fill: most-constrained light first,
   candidates ordered by crossing options (dead ends pruned), no repeats,
-  Luby restarts. A step machine, so the worker runs it in slices and can
+  Luby restarts. Required words are placed first, as search steps that
+  choose a light for a word. A step machine, so the worker runs it in slices and can
   report progress and honour cancel. Cells carry an `auto` flag so re-fills
   replace only auto-fill letters.
 - `public/wordlists/` – dictionaries, pure ASCII. After changing them, run

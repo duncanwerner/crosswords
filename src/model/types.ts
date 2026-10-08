@@ -46,6 +46,8 @@ export interface Puzzle {
   clues: Partial<Record<LightKey, ClueEntry>>;
   /** words never offered by suggestions, helpers or the auto-fill: uppercase A-Z, sorted */
   blocked: string[];
+  /** words the auto-fill must include: uppercase A-Z, sorted */
+  required: string[];
 }
 
 export interface Light {

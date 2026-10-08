@@ -340,6 +340,16 @@ export const createEditor = (initial: Puzzle) => {
   const unblockWord = (word: string) => commit(d => { d.blocked = d.blocked.filter(w => w !== word); }, undefined, false);
   const clearBlocked = () => commit(d => { d.blocked = []; }, undefined, false);
 
+  /** words the auto-fill must include */
+  const required = createMemo(() => [...puzzle.required], { equals: (a, b) => a.join() === b.join(), name: 'required' });
+
+  const requireWords = (words: readonly string[]) => {
+    const next = normalizeBlocked([...puzzle.required, ...words]);
+    if (next.join() === puzzle.required.join()) return;
+    commit(d => { d.required = next; }, undefined, false);
+  };
+  const unrequireWord = (word: string) => commit(d => { d.required = d.required.filter(w => w !== word); }, undefined, false);
+
   const setTitle = (title: string) => commit(d => { d.title = title; }, 'title', false);
   const setSetter = (setter: string) => commit(d => { d.setter = setter; }, 'setter', false);
   const setSymmetry = (symmetry: Symmetry) => commit(d => { d.symmetry = symmetry; }, undefined, false);
@@ -355,6 +365,7 @@ export const createEditor = (initial: Puzzle) => {
     undo, redo,
     toggleFeature, transform, setLetter, fillLight, clearLetters, applyFill, commitLetters, clearAutoFill, setClue, setLinks, setTitle, setSetter, setSymmetry,
     blocked, blockWords, unblockWord, clearBlocked,
+    required, requireWords, unrequireWord,
     saveNow,
   };
 };

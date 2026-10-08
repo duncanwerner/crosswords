@@ -47,6 +47,7 @@ export const createPuzzle = (options: NewPuzzleOptions): Puzzle => {
     cells,
     clues: {},
     blocked: [],
+    required: [],
   };
 };
 
@@ -67,7 +68,7 @@ export const pruneClues = (puzzle: Pick<Puzzle, 'rows' | 'cols' | 'cells' | 'clu
   return clues;
 };
 
-/** normalize a block list: uppercase A-Z, no empties, unique, sorted */
+/** normalize a word list (blocked or required): uppercase A-Z, no empties, unique, sorted */
 export const normalizeBlocked = (words: readonly string[]) =>
   [...new Set(words.map(toLetters).filter(Boolean))].sort();
 

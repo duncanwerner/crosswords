@@ -10,6 +10,9 @@ import type { WordIndex } from './word-index';
  *    some noise so runs differ, and any candidate that leaves a crossing
  *    with no words is skipped (forward checking);
  *  - no duplicate words; blocked words never appear (the index handles it);
+ *  - required words are placed first, each in whichever light of its
+ *    length suits the crossings best. they needn't be in the dictionary,
+ *    and a fill only counts (even a partial one) once they're all in;
  *  - restarts with growing node limits (Luby sequence) so one bad early
  *    choice can't sink the whole run.
  *
@@ -24,6 +27,8 @@ export interface FillInput {
   shape: GridShape['cells'];
   /** one char per cell: A-Z fixed, '.' empty */
   letters: string;
+  /** words the fill must include (uppercase A-Z, distinct), each in one light */
+  required?: string[];
   seed: number;
 }
 
@@ -63,10 +68,19 @@ const luby = (i: number): number => {
   return (1 << k) - 1 === i ? 1 << (k - 1) : luby(i - (1 << (k - 1)) + 1);
 };
 
-interface Frame {
+/** a word in a light */
+interface Option {
   light: number;
-  candidates: string[];
+  word: string;
+}
+
+interface Frame {
+  /** the light this frame fills, or -1 when it places a required word */
+  light: number;
+  options: Option[];
   next: number;
+  /** the option in place, if any */
+  current?: Option;
   /** cells this frame's current word filled */
   placed: number[];
   /** crossing lights its current word completed */
@@ -87,6 +101,7 @@ export class Filler {
   protected used = new Set<string>();
   protected readonly initialUsed: Set<string>;
   protected stack: Frame[] = [];
+  protected readonly required: string[];
 
   protected rand: () => number;
   protected failures: Uint32Array;
@@ -140,6 +155,7 @@ export class Filler {
     this.assigned = this.initialAssigned.slice();
     this.used = new Set(this.initialUsed);
     this.total = this.lights.length - this.initialAssigned.reduce((a, b) => a + b, 0);
+    this.required = [...new Set(input.required ?? [])];
 
     this.rand = random(input.seed);
     this.failures = new Uint32Array(this.lights.length);
@@ -153,6 +169,30 @@ export class Filler {
         this.failures[li]++;
         this.impossible = `No ${this.index.buckets.has(l.length) ? 'words fit' : `${l.length}-letter words exist for`} ${l.number} ${l.dir} (${this.pattern(li).replace(/\./g, '·')}).`;
         break;
+      }
+    }
+
+    // each required word needs a light of its own that it fits
+    if (!this.impossible) {
+      const open = new Map<number, number>();
+      for (let li = 0; li < this.lights.length; li++) {
+        if (!this.assigned[li]) open.set(this.lights[li].length, (open.get(this.lights[li].length) ?? 0) + 1);
+      }
+      const pending = this.required.filter(w => !this.used.has(w));
+      const need = new Map<number, number>();
+      for (const w of pending) need.set(w.length, (need.get(w.length) ?? 0) + 1);
+      for (const [length, n] of need) {
+        if (n > (open.get(length) ?? 0)) {
+          const words = pending.filter(w => w.length === length).join(', ');
+          this.impossible = open.get(length)
+            ? `Too many required ${length}-letter words (${words}) for the ${open.get(length)} open ${length}-letter lights.`
+            : `There's no open ${length}-letter light for ${words}.`;
+          break;
+        }
+      }
+      for (const w of pending) {
+        if (this.impossible) break;
+        if (!this.placements(w).length) this.impossible = `${w} doesn't fit in any light, given the letters and crossings.`;
       }
     }
   }
@@ -200,11 +240,12 @@ export class Filler {
     return { light: best, size: bestSize };
   }
 
-  /** candidates for a light, best first; ones that kill a crossing are dropped */
-  protected candidates(li: number): string[] {
+  /**
+   * for each empty cell of a light with an open crossing: how many words
+   * that crossing would have, for each letter in the cell
+   */
+  protected crossChecks(li: number) {
     const light = this.lights[li];
-    const m = this.index.match(this.pattern(li));
-    if (!m) return [];
     const checks: Array<{ pos: number; counts: Uint32Array }> = [];
     for (let pos = 0; pos < light.length; pos++) {
       if (this.letters[light.cells[pos]] !== EMPTY) continue;
@@ -218,32 +259,71 @@ export class Filler {
       }
       checks.push({ pos, counts });
     }
+    return checks;
+  }
 
-    const scored: Array<{ word: string; score: number }> = [];
+  /**
+   * how well a word keeps its crossings open (sum of log2(options + 1)), with
+   * noise to vary the fill between runs; undefined if it leaves one with none
+   */
+  protected score(word: string, checks: ReturnType<Filler['crossChecks']>) {
+    let score = 0;
+    for (const check of checks) {
+      const n = check.counts[word.charCodeAt(check.pos) - A];
+      if (!n) return undefined;
+      score += Math.log2(n + 1);
+    }
+    // noise: enough to vary the fill between runs, not enough to bury good words
+    return score + this.rand() * 2.5;
+  }
+
+  /** candidates for a light, best first; ones that kill a crossing are dropped */
+  protected candidates(li: number): Option[] {
+    const m = this.index.match(this.pattern(li));
+    if (!m) return [];
+    const checks = this.crossChecks(li);
+    const scored: Array<Option & { score: number }> = [];
     for (const i of members(m.set)) {
       const word = m.bucket.words[i];
       if (this.used.has(word)) continue;
-      let score = 0;
-      let dead = false;
-      for (const check of checks) {
-        const n = check.counts[word.charCodeAt(check.pos) - A];
-        if (!n) {
-          dead = true;
-          break;
-        }
-        score += Math.log2(n + 1);
-      }
-      if (dead) continue;
-      // noise: enough to vary the fill between runs, not enough to bury good words
-      scored.push({ word, score: score + this.rand() * 2.5 });
+      const score = this.score(word, checks);
+      if (score !== undefined) scored.push({ light: li, word, score });
     }
     scored.sort((a, b) => b.score - a.score);
-    return scored.map(s => s.word);
+    return scored;
+  }
+
+  /** open lights a required word fits, best first; ones that kill a crossing are dropped */
+  protected placements(word: string): Option[] {
+    const scored: Array<Option & { score: number }> = [];
+    for (let li = 0; li < this.lights.length; li++) {
+      const light = this.lights[li];
+      if (this.assigned[li] || light.length !== word.length) continue;
+      if (!light.cells.every((c, pos) => this.letters[c] === EMPTY || this.letters[c] === word.charCodeAt(pos) - A + 1)) continue;
+      const score = this.score(word, this.crossChecks(li));
+      if (score !== undefined) scored.push({ light: li, word, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    return scored;
+  }
+
+  /** the required word with the fewest placements, and those placements; undefined when all are in */
+  protected nextRequired(): Option[] | undefined {
+    let best: Option[] | undefined;
+    for (const word of this.required) {
+      if (this.used.has(word)) continue;
+      const options = this.placements(word);
+      if (!best || options.length < best.length) best = options;
+      if (!options.length) break;
+    }
+    return best;
   }
 
   /** put a word in a light; false (and nothing changed) if it duplicates a word it completes */
-  protected place(frame: Frame, word: string): boolean {
-    const light = this.lights[frame.light];
+  protected place(frame: Frame, option: Option): boolean {
+    const { light: li, word } = option;
+    const light = this.lights[li];
+    frame.current = option;
     frame.placed = [];
     frame.completed = [];
     for (let pos = 0; pos < light.length; pos++) {
@@ -253,15 +333,15 @@ export class Filler {
         frame.placed.push(cell);
       }
     }
-    this.assigned[frame.light] = 1;
+    this.assigned[li] = 1;
     this.used.add(word);
     for (let pos = 0; pos < light.length; pos++) {
-      const cross = this.crossLight[frame.light][pos];
+      const cross = this.crossLight[li][pos];
       if (cross < 0 || this.assigned[cross]) continue;
       if (this.lights[cross].cells.every(c => this.letters[c] !== EMPTY)) {
         const crossWord = this.word(cross);
         if (this.used.has(crossWord)) {
-          this.unplace(frame, word);
+          this.unplace(frame);
           return false;
         }
         this.assigned[cross] = 1;
@@ -272,14 +352,16 @@ export class Filler {
     return true;
   }
 
-  protected unplace(frame: Frame, word: string) {
+  protected unplace(frame: Frame) {
+    const { light, word } = frame.current!;
     for (const cross of frame.completed) {
       this.assigned[cross] = 0;
       this.used.delete(this.word(cross));
     }
     for (const cell of frame.placed) this.letters[cell] = EMPTY;
-    this.assigned[frame.light] = 0;
+    this.assigned[light] = 0;
     this.used.delete(word);
+    frame.current = undefined;
     frame.placed = [];
     frame.completed = [];
   }
@@ -295,6 +377,7 @@ export class Filler {
   }
 
   protected noteBest() {
+    if (this.required.some(w => !this.used.has(w))) return;
     const filled = this.filled;
     if (filled > this.best.filled) this.best = { letters: this.letters.slice(), filled };
   }
@@ -309,8 +392,20 @@ export class Filler {
       if (this.restartNodes >= this.restartLimit) this.restart();
 
       const top = this.stack[this.stack.length - 1];
-      // descend once the top frame holds a word: choose the next light
-      if (!top || this.assigned[top.light]) {
+      // descend once the top frame holds a word: place the next required
+      // word, or once they're all in, choose the next light
+      if (!top || top.current) {
+        const required = this.nextRequired();
+        if (required) {
+          this.nodes++;
+          this.restartNodes++;
+          if (!required.length) {
+            if (!this.backtrack()) return this.exhausted();
+            continue;
+          }
+          this.stack.push({ light: -1, options: required, next: 0, placed: [], completed: [] });
+          continue;
+        }
         const { light, size } = this.pick();
         if (light < 0) {
           this.noteBest();
@@ -323,13 +418,13 @@ export class Filler {
           if (!this.backtrack()) return this.exhausted();
           continue;
         }
-        this.stack.push({ light, candidates: this.candidates(light), next: 0, placed: [], completed: [] });
+        this.stack.push({ light, options: this.candidates(light), next: 0, placed: [], completed: [] });
         continue;
       }
 
       // try the next candidate in the top frame
       if (!this.tryNext(top)) {
-        this.failures[top.light]++;
+        if (top.light >= 0) this.failures[top.light]++;
         this.stack.pop();
         if (!this.backtrack()) return this.exhausted();
       }
@@ -338,10 +433,10 @@ export class Filler {
   }
 
   protected tryNext(frame: Frame): boolean {
-    while (frame.next < frame.candidates.length) {
-      const word = frame.candidates[frame.next++];
-      if (this.used.has(word)) continue;
-      if (this.place(frame, word)) {
+    while (frame.next < frame.options.length) {
+      const option = frame.options[frame.next++];
+      if (this.used.has(option.word)) continue;
+      if (this.place(frame, option)) {
         this.noteBest();
         return true;
       }
@@ -353,10 +448,9 @@ export class Filler {
   protected backtrack(): boolean {
     while (this.stack.length) {
       const frame = this.stack[this.stack.length - 1];
-      const word = frame.candidates[frame.next - 1];
-      if (word !== undefined && this.assigned[frame.light]) this.unplace(frame, word);
+      if (frame.current) this.unplace(frame);
       if (this.tryNext(frame)) return true;
-      this.failures[frame.light]++;
+      if (frame.light >= 0) this.failures[frame.light]++;
       this.stack.pop();
     }
     return false;
@@ -368,7 +462,9 @@ export class Filler {
    * so no fill exists.
    */
   protected exhausted(): 'impossible' {
-    this.impossible ??= 'No fill exists for this grid with the current dictionary and block list.';
+    this.impossible ??= this.required.length
+      ? 'No fill exists for this grid with these required words and the current dictionary and block list.'
+      : 'No fill exists for this grid with the current dictionary and block list.';
     return 'impossible';
   }
 

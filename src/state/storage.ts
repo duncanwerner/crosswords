@@ -94,6 +94,7 @@ export const migrate = (raw: unknown): Puzzle | undefined => {
     cells,
     clues: migrateClues(src.clues),
     blocked: Array.isArray(src.blocked) ? normalizeBlocked(src.blocked.filter(w => typeof w === 'string')) : [],
+    required: Array.isArray(src.required) ? normalizeBlocked(src.required.filter(w => typeof w === 'string')) : [],
   };
 };
 
