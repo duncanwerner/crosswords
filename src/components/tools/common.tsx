@@ -63,3 +63,18 @@ export const latestOnly = () => {
     );
   };
 };
+
+/** small ⊘ button that adds a word to the puzzle's block list */
+export const BlockButton = (props: { word: string; onBlock: (word: string) => void; label?: boolean }) => (
+  <button
+    class={styles.block}
+    title={`Block ${props.word}: never offer it again in this puzzle`}
+    aria-label={`Block ${props.word}`}
+    onClick={e => {
+      e.stopPropagation();
+      props.onBlock(props.word);
+    }}
+  >
+    ⊘{props.label ? ` ${props.word}` : ''}
+  </button>
+);

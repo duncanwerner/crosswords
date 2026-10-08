@@ -1,9 +1,10 @@
-import { For, Match, Show, Switch, createEffect, createMemo, createSignal } from 'solid-js';
+import { For, Match, Show, Switch, createEffect, createMemo, createSignal, useContext } from 'solid-js';
+import { EditorContext } from '../../state/editor';
 import { status } from '../../state/words';
 import { words } from '../../words/client';
 import { type RegexResult, compile, parseLengths } from '../../words/regex';
 import { FLAG_ABBREVIATION, FLAG_PROPER } from '../../words/word-index';
-import { CopyStatus, DictionaryGate, type ToolProps, createCopier, latestOnly } from './common';
+import { BlockButton, CopyStatus, DictionaryGate, type ToolProps, createCopier, latestOnly } from './common';
 import styles from './tools.module.css';
 
 const LIMIT = 1000;
@@ -15,6 +16,7 @@ const [lengthText, setLengthText] = createSignal('');
 
 /** dictionary search by regular expression: case-insensitive, unanchored unless ^ / $ */
 export const RegexTool = (props: ToolProps) => {
+  const ed = useContext(EditorContext);
   const { copied, copy } = createCopier();
   const [result, setResult] = createSignal<{ key: string; result: RegexResult }>();
   const [error, setError] = createSignal('');
@@ -35,13 +37,13 @@ export const RegexTool = (props: ToolProps) => {
   const run = latestOnly();
   let timer: ReturnType<typeof setTimeout> | undefined;
   createEffect(
-    () => ({ p: pattern(), c: compiled(), len: lengths(), k: key(), active: props.active, s: status() }),
-    ({ p, c, len, k, active, s }) => {
+    () => ({ p: pattern(), c: compiled(), len: lengths(), k: key(), active: props.active, s: status(), blocked: ed.blocked() }),
+    ({ p, c, len, k, active, s, blocked }) => {
       clearTimeout(timer);
       if (!active || !c.ok || !len || s.state !== 'ready') return;
       timer = setTimeout(() => {
         run(
-          () => words.regex({ pattern: p, minLength: len.min, maxLength: len.max, limit: LIMIT }),
+          () => words.regex({ pattern: p, minLength: len.min, maxLength: len.max, limit: LIMIT, blocked }),
           r => {
             setError('');
             setResult({ key: k, result: r });
@@ -132,11 +134,14 @@ export const RegexTool = (props: ToolProps) => {
                         <div class={styles.chips}>
                           <For each={g().items}>
                             {item => (
-                              <button class={styles.chip} title="Copy" onClick={() => copy(item.word)}>
-                                {item.word}
-                                <Show when={item.flags & FLAG_PROPER}><span class={styles.tag}>proper</span></Show>
-                                <Show when={item.flags & FLAG_ABBREVIATION}><span class={styles.tag}>abbr.</span></Show>
-                              </button>
+                              <span class={styles.blockable}>
+                                <button class={styles.chip} title="Copy" onClick={() => copy(item.word)}>
+                                  {item.word}
+                                  <Show when={item.flags & FLAG_PROPER}><span class={styles.tag}>proper</span></Show>
+                                  <Show when={item.flags & FLAG_ABBREVIATION}><span class={styles.tag}>abbr.</span></Show>
+                                </button>
+                                <BlockButton word={item.word} onBlock={w => ed.blockWords([w])} />
+                              </span>
                             )}
                           </For>
                         </div>

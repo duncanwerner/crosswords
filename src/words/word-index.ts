@@ -1,5 +1,5 @@
 import { toAscii } from '../model/ascii';
-import { type Bitset, andInto, count, countAnd, full, members, set, words32 } from './bitset';
+import { type Bitset, andInto, clear, count, countAnd, full, members, set, words32 } from './bitset';
 
 /**
  * a dictionary indexed for pattern matching. words are grouped by length;
@@ -28,14 +28,31 @@ export interface Bucket {
   /** masks for (position, letter) at offset (p * 26 + c) * size */
   masks: Uint32Array;
   /** words allowed by the current options */
+  base: Bitset;
+  /** base, less blocked words: what every query uses */
   allowed: Bitset;
 }
 
 const A = 65;
 
+/** binary search in a sorted list */
+const indexOf = (list: readonly string[], word: string) => {
+  let lo = 0;
+  let hi = list.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    if (list[mid] === word) return mid;
+    if (list[mid] < word) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return -1;
+};
+
 export class WordIndex {
   readonly buckets = new Map<number, Bucket>();
   protected options: IndexOptions = { proper: false };
+  protected blocked: string[] = [];
+  protected blockedKey = '';
 
   /** raw dictionary words, any case; case decides proper noun / abbreviation */
   constructor(raw: readonly string[], options?: Partial<IndexOptions>) {
@@ -71,7 +88,8 @@ export class WordIndex {
           masks[offset + (i >>> 5)] |= 1 << (i & 31);
         }
       });
-      this.buckets.set(length, { length, words, flags, size, masks, allowed: full(words.length) });
+      const all = full(words.length);
+      this.buckets.set(length, { length, words, flags, size, masks, base: all, allowed: all });
     }
 
     this.setOptions(options ?? {});
@@ -84,7 +102,32 @@ export class WordIndex {
       bucket.flags.forEach((flags, i) => {
         if (this.options.proper || !flags) set(allowed, i);
       });
-      bucket.allowed = allowed;
+      bucket.base = allowed;
+    }
+    this.applyBlocked();
+  }
+
+  /**
+   * words to leave out of every query (uppercase A-Z). cheap to call
+   * repeatedly with the same list.
+   */
+  setBlocked(words: readonly string[]) {
+    const key = words.join(',');
+    if (key === this.blockedKey) return;
+    this.blockedKey = key;
+    this.blocked = [...words];
+    this.applyBlocked();
+  }
+
+  protected applyBlocked() {
+    for (const bucket of this.buckets.values()) bucket.allowed = bucket.base;
+    for (const word of this.blocked) {
+      const bucket = this.buckets.get(word.length);
+      if (!bucket) continue;
+      const i = indexOf(bucket.words, word);
+      if (i < 0) continue;
+      if (bucket.allowed === bucket.base) bucket.allowed = bucket.base.slice();
+      clear(bucket.allowed, i);
     }
   }
 

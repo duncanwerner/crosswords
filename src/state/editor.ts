@@ -1,6 +1,7 @@
 import { createContext, createMemo, createSignal, createStore, flush, onSettled, snapshot } from 'solid-js';
 import { type GridShape, computeLights, lightAt } from '../model/lights';
 import { type Selection, settle } from '../model/navigation';
+import { normalizeBlocked } from '../model/puzzle';
 import { type WarningKind, computeStats } from '../model/stats';
 import { type Feature, symmetricPartner } from '../model/symmetry';
 import type { ClueEntry, Direction, Light, LightKey, Puzzle, Symmetry } from '../model/types';
@@ -214,6 +215,17 @@ export const createEditor = (initial: Puzzle) => {
     }, `clue:${key}:${Object.keys(patch).join()}`);
   };
 
+  /** the block list, as a plain array that only changes when its contents do */
+  const blocked = createMemo(() => [...puzzle.blocked], { equals: (a, b) => a.join() === b.join(), name: 'blocked' });
+
+  const blockWords = (words: readonly string[]) => {
+    const next = normalizeBlocked([...puzzle.blocked, ...words]);
+    if (next.join() === puzzle.blocked.join()) return;
+    commit(d => { d.blocked = next; });
+  };
+  const unblockWord = (word: string) => commit(d => { d.blocked = d.blocked.filter(w => w !== word); });
+  const clearBlocked = () => commit(d => { d.blocked = []; });
+
   const setTitle = (title: string) => commit(d => { d.title = title; }, 'title');
   const setSetter = (setter: string) => commit(d => { d.setter = setter; }, 'setter');
   const setSymmetry = (symmetry: Symmetry) => commit(d => { d.symmetry = symmetry; });
@@ -227,6 +239,7 @@ export const createEditor = (initial: Puzzle) => {
     canRedo: () => historySize().redo > 0,
     undo, redo,
     toggleFeature, setLetter, fillLight, clearLetters, setClue, setTitle, setSetter, setSymmetry,
+    blocked, blockWords, unblockWord, clearBlocked,
     saveNow,
   };
 };

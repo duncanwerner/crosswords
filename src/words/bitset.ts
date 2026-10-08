@@ -15,6 +15,10 @@ export const set = (b: Bitset, i: number) => {
   b[i >>> 5] |= 1 << (i & 31);
 };
 
+export const clear = (b: Bitset, i: number) => {
+  b[i >>> 5] &= ~(1 << (i & 31));
+};
+
 export const has = (b: Bitset, i: number) => (b[i >>> 5] & (1 << (i & 31))) !== 0;
 
 /** a &= b, in place */

@@ -68,3 +68,46 @@
 .help code { font: 12px var(--font-grid); padding: 0 3px; border-radius: 3px; background: var(--surface-2); color: var(--text); }
 
 .status { min-height: 20px; margin: 0; padding: 2px 16px; color: var(--ok); font-size: 12px; border-top: 1px solid var(--border); }
+
+/* block buttons on results: shown on hover/focus, always on touch screens */
+.blockable { display: inline-flex; align-items: center; }
+.block {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+.block:hover, .block:focus-visible { color: var(--danger); outline: none; }
+.blockable:hover .block, .blockable:focus-within .block, li:hover > .blockers .block, li:focus-within > .blockers .block { opacity: 1; }
+@media (hover: none) { .block { opacity: 1; } }
+
+.phrase { display: flex; align-items: baseline; gap: 8px; }
+.blockers { display: inline-flex; gap: 2px; }
+.blockers .block { font: 11px var(--font-ui); }
+
+/* blocked list */
+.blockedChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 2px 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: 600 13px/1.4 var(--font-grid);
+  letter-spacing: 0.06em;
+}
+.blockedChip .remove {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.blockedChip .remove:hover { color: var(--danger); }
+.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }

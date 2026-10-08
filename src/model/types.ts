@@ -37,6 +37,8 @@ export interface Puzzle {
   /** flat, row-major */
   cells: Cell[];
   clues: Partial<Record<LightKey, ClueEntry>>;
+  /** words never offered by suggestions, helpers or the auto-fill: uppercase A-Z, sorted */
+  blocked: string[];
 }
 
 export interface Light {

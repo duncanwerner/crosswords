@@ -20,9 +20,12 @@ const load = async (url: string, dictionary: Dictionary) => {
   return new WordIndex(raw);
 };
 
-const index = () => {
+/** the loaded index, with this query's block list applied */
+const index = async (blocked: string[]) => {
   if (!ready) throw new Error('No dictionary loaded.');
-  return ready;
+  const loadedIndex = await ready;
+  loadedIndex.setBlocked(blocked);
+  return loadedIndex;
 };
 
 const handle = async (msg: Request): Promise<unknown> => {
@@ -44,11 +47,11 @@ const handle = async (msg: Request): Promise<unknown> => {
       return { dictionary: msg.dictionary, words: index.size } satisfies LoadResult;
     }
     case 'suggest':
-      return suggest(await index(), msg);
+      return suggest(await index(msg.blocked), msg);
     case 'anagrams':
-      return anagrams(await index(), msg);
+      return anagrams(await index(msg.blocked), msg);
     case 'regex':
-      return regexSearch(await index(), msg);
+      return regexSearch(await index(msg.blocked), msg);
   }
 };
 

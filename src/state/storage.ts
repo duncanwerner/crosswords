@@ -1,5 +1,5 @@
 import { toLetters } from '../model/ascii';
-import { pruneClues } from '../model/puzzle';
+import { normalizeBlocked, pruneClues } from '../model/puzzle';
 import { type Cell, type Puzzle, SCHEMA_VERSION, emptyCell } from '../model/types';
 
 /**
@@ -73,6 +73,7 @@ export const migrate = (raw: unknown): Puzzle | undefined => {
     symmetry: src.symmetry === 'none' ? 'none' : 'rotational',
     cells,
     clues: src.clues && typeof src.clues === 'object' ? { ...src.clues } : {},
+    blocked: Array.isArray(src.blocked) ? normalizeBlocked(src.blocked.filter(w => typeof w === 'string')) : [],
   };
 };
 

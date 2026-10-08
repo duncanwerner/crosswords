@@ -49,4 +49,16 @@ describe('WordIndex', () => {
     expect(counts['O'.charCodeAt(0) - 65]).toBe(1);
     expect(counts['E'.charCodeAt(0) - 65]).toBe(0);
   });
+
+  it('leaves blocked words out of every query, including counts', () => {
+    const index = new WordIndex(RAW);
+    index.setBlocked(['COT', 'NOTAWORD']);
+    expect(matches(index, 'C.T')).toEqual(['CAT', 'CUT']);
+    expect(index.letterCounts('C.T', 1)['O'.charCodeAt(0) - 65]).toBe(0);
+    // survives an options change, and can be lifted
+    index.setOptions({ proper: true });
+    expect(matches(index, 'C.T')).toEqual(['CAT', 'CUT']);
+    index.setBlocked([]);
+    expect(matches(index, 'C.T')).toEqual(['CAT', 'COT', 'CUT']);
+  });
 });

@@ -22,14 +22,55 @@ const TEMPLATES: Choice<Template>[] = [
   { value: 'empty', label: 'Empty', hint: 'All white' },
 ];
 
+/** the last settings used to create a puzzle (everything but the title) */
+interface Remembered {
+  rows: number;
+  cols: number;
+  style: GridStyle;
+  symmetry: Symmetry;
+  template: Template;
+}
+
+const REMEMBER_KEY = 'cross:new-puzzle';
+const DEFAULTS: Remembered = { rows: 15, cols: 15, style: 'blocked', symmetry: 'rotational', template: 'lattice' };
+
+const pick = <T,>(value: unknown, choices: Choice<T>[], fallback: T) =>
+  choices.some(c => c.value === value) ? (value as T) : fallback;
+
+const recall = (): Remembered => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(REMEMBER_KEY) || '{}');
+    return {
+      rows: Number.isFinite(raw.rows) ? clampSize(raw.rows) : DEFAULTS.rows,
+      cols: Number.isFinite(raw.cols) ? clampSize(raw.cols) : DEFAULTS.cols,
+      style: pick(raw.style, STYLES, DEFAULTS.style),
+      symmetry: pick(raw.symmetry, SYMMETRIES, DEFAULTS.symmetry),
+      template: pick(raw.template, TEMPLATES, DEFAULTS.template),
+    };
+  }
+  catch {
+    return DEFAULTS;
+  }
+};
+
+const remember = (settings: Remembered) => {
+  try {
+    localStorage.setItem(REMEMBER_KEY, JSON.stringify(settings));
+  }
+  catch {
+    // preference only
+  }
+};
+
 export const NewPuzzleDialog = (props: { onClose: () => void }) => {
   let dialog!: HTMLDialogElement;
+  const last = recall();
   const [title, setTitle] = createSignal('');
-  const [rows, setRows] = createSignal(15);
-  const [cols, setCols] = createSignal(15);
-  const [style, setStyle] = createSignal<GridStyle>('blocked');
-  const [symmetry, setSymmetry] = createSignal<Symmetry>('rotational');
-  const [template, setTemplate] = createSignal<Template>('lattice');
+  const [rows, setRows] = createSignal(last.rows);
+  const [cols, setCols] = createSignal(last.cols);
+  const [style, setStyle] = createSignal<GridStyle>(last.style);
+  const [symmetry, setSymmetry] = createSignal<Symmetry>(last.symmetry);
+  const [template, setTemplate] = createSignal<Template>(last.template);
 
   onSettled(() => {
     dialog.showModal();
@@ -37,13 +78,18 @@ export const NewPuzzleDialog = (props: { onClose: () => void }) => {
 
   const onSubmit = (e: SubmitEvent) => {
     e.preventDefault();
-    const p = createNewPuzzle({
-      title: title().trim(),
+    const settings: Remembered = {
       rows: clampSize(rows()),
       cols: clampSize(cols()),
       style: style(),
       symmetry: symmetry(),
-      template: style() === 'blocked' ? template() : 'empty',
+      template: template(),
+    };
+    remember(settings);
+    const p = createNewPuzzle({
+      ...settings,
+      title: title().trim(),
+      template: settings.style === 'blocked' ? settings.template : 'empty',
     });
     props.onClose();
     openPuzzle(p.id);

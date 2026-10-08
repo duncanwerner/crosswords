@@ -7,7 +7,7 @@ import { status } from '../../state/words';
 import { words } from '../../words/client';
 import type { Crossing, SuggestResult, Suggestion } from '../../words/protocol';
 import { FLAG_ABBREVIATION, FLAG_PROPER } from '../../words/word-index';
-import { DictionaryGate, type ToolProps, latestOnly } from './common';
+import { BlockButton, DictionaryGate, type ToolProps, latestOnly } from './common';
 import shared from './tools.module.css';
 import styles from './WordsTool.module.css';
 
@@ -58,11 +58,11 @@ export const WordsTool = (props: ToolProps) => {
 
   const run = latestOnly();
   createEffect(
-    () => ({ q: query(), f: filter(), s: status(), active: props.active }),
-    ({ q, f, s, active }) => {
+    () => ({ q: query(), f: filter(), s: status(), active: props.active, blocked: ed.blocked() }),
+    ({ q, f, s, active, blocked }) => {
       if (!active || !q || s.state !== 'ready') return;
       run(
-        () => words.suggest({ pattern: q.pattern, crossings: q.crossings, used: q.used, filter: f, limit: LIMIT }),
+        () => words.suggest({ pattern: q.pattern, crossings: q.crossings, used: q.used, filter: f, limit: LIMIT, blocked }),
         r => {
           setError('');
           setResult({ query: q, filter: f, result: r });
@@ -146,7 +146,7 @@ export const WordsTool = (props: ToolProps) => {
                 <div class={[shared.results, { [shared.stale]: stale() }]}>
                   <ul class={styles.list} onPointerLeave={() => hover()}>
                     <For each={r().result.items} keyed={s => s.word}>
-                      {s => <SuggestionRow item={s()} pattern={r().query.pattern} onChoose={choose} onHover={hover} />}
+                      {s => <SuggestionRow item={s()} pattern={r().query.pattern} onChoose={choose} onHover={hover} onBlock={w => ed.blockWords([w])} />}
                     </For>
                   </ul>
                   <Show when={r().result.matched > r().result.items.length}>
@@ -169,6 +169,7 @@ const SuggestionRow = (props: {
   pattern: string;
   onChoose: (s: Suggestion) => void;
   onHover: (s?: Suggestion) => void;
+  onBlock: (word: string) => void;
 }) => {
   const level = () => bars(props.item.min);
   const letters = () => props.item.word.split('').map((ch, i) => ({ ch, fixed: props.pattern[i] !== '.' }));
@@ -178,7 +179,7 @@ const SuggestionRow = (props: {
       : `Every crossing keeps at least ${props.item.min} option${props.item.min === 1 ? '' : 's'}`;
 
   return (
-    <li class={{ [styles.dead]: props.item.min === 0 }}>
+    <li class={[styles.row, shared.blockable, { [styles.dead]: props.item.min === 0 }]}>
       <button
         class={styles.item}
         onClick={() => props.onChoose(props.item)}
@@ -200,6 +201,7 @@ const SuggestionRow = (props: {
           <For each={[1, 2, 3, 4]}>{n => <i class={{ [styles.on]: n <= level() }} />}</For>
         </span>
       </button>
+      <BlockButton word={props.item.word} onBlock={props.onBlock} />
     </li>
   );
 };

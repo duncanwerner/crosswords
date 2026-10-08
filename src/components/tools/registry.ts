@@ -1,5 +1,6 @@
 import type { Component } from 'solid-js';
 import { AnagramsTool } from './AnagramsTool';
+import { BlockedTool } from './BlockedTool';
 import type { ToolProps } from './common';
 import { RegexTool } from './RegexTool';
 import { WordsTool } from './WordsTool';
@@ -21,4 +22,5 @@ export const TOOLS: ToolDef[] = [
   { id: 'words', label: 'Words', description: 'Words that fit the selected light', Component: WordsTool },
   { id: 'anagrams', label: 'Anagrams', description: 'Anagrams of the selected answer or any letters', Component: AnagramsTool },
   { id: 'regex', label: 'Regex', description: 'Search the dictionary with a regular expression', Component: RegexTool },
+  { id: 'blocked', label: 'Blocked', description: "Words this puzzle should never offer", Component: BlockedTool },
 ];

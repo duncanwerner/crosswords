@@ -26,7 +26,9 @@ npm run build      # typecheck + production build
   position × letter, so pattern matches are ANDs and counts are popcounts),
   suggestion ranking, anagram and regex search, and the Web Worker that hosts
   them. The client restarts the worker if a request runs too long (e.g. a
-  catastrophically backtracking regex).
+  catastrophically backtracking regex). Each query carries the puzzle's
+  block list, which the index applies to its allowed set, so blocked words
+  vanish from every helper (and from crossing counts) without per-tool code.
 - `public/wordlists/` – dictionaries, pure ASCII. After changing them, run
   `node scripts/clean-wordlists.ts` to fold diacritics (é→E, ø→O) and dedupe.
   All matching is on uppercase A–Z; user input goes through `toLetters()`.

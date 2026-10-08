@@ -4,7 +4,7 @@ import { EditorContext } from '../../state/editor';
 import { status } from '../../state/words';
 import type { AnagramResult } from '../../words/anagrams';
 import { words } from '../../words/client';
-import { CopyStatus, DictionaryGate, type ToolProps, createCopier, latestOnly } from './common';
+import { BlockButton, CopyStatus, DictionaryGate, type ToolProps, createCopier, latestOnly } from './common';
 import styles from './tools.module.css';
 
 const LIMIT = 300;
@@ -43,11 +43,11 @@ export const AnagramsTool = (props: ToolProps) => {
 
   const run = latestOnly();
   createEffect(
-    () => ({ l: letters(), m: maxWords(), n: minLength(), active: props.active, s: status() }),
-    ({ l, m, n, active, s }) => {
+    () => ({ l: letters(), m: maxWords(), n: minLength(), active: props.active, s: status(), blocked: ed.blocked() }),
+    ({ l, m, n, active, s, blocked }) => {
       if (!active || !l || s.state !== 'ready') return;
       run(
-        () => words.anagrams({ letters: l, maxWords: m, minLength: n, limit: LIMIT, budgetMs: 2000 }),
+        () => words.anagrams({ letters: l, maxWords: m, minLength: n, limit: LIMIT, budgetMs: 2000, blocked }),
         r => {
           setError('');
           setResult(r);
@@ -134,14 +134,19 @@ export const AnagramsTool = (props: ToolProps) => {
                           fallback={
                             <ul class={styles.rows}>
                               <For each={g().items}>
-                                {parts => <Phrase parts={parts} onCopy={copy} />}
+                                {parts => <Phrase parts={parts} onCopy={copy} onBlock={w => ed.blockWords([w])} />}
                               </For>
                             </ul>
                           }
                         >
                           <div class={styles.chips}>
                             <For each={g().items.flatMap(parts => parts[0])}>
-                              {word => <button class={styles.chip} title="Copy" onClick={() => copy(word)}>{word}</button>}
+                              {word => (
+                                <span class={styles.blockable}>
+                                  <button class={styles.chip} title="Copy" onClick={() => copy(word)}>{word}</button>
+                                  <BlockButton word={word} onBlock={w => ed.blockWords([w])} />
+                                </span>
+                              )}
                             </For>
                           </div>
                         </Show>
@@ -162,11 +167,15 @@ export const AnagramsTool = (props: ToolProps) => {
   );
 };
 
-/** a phrase: each part shows its first word, with same-letter alternatives muted */
-const Phrase = (props: { parts: string[][]; onCopy: (text: string) => void }) => {
+/**
+ * a phrase: each part shows its first word, with same-letter alternatives
+ * muted. hovering offers a ⊘ per word, since junk usually hides in phrases.
+ */
+const Phrase = (props: { parts: string[][]; onCopy: (text: string) => void; onBlock: (word: string) => void }) => {
   const phrase = () => props.parts.map(p => p[0]).join(' ');
+  const distinct = () => [...new Set(props.parts.flat())];
   return (
-    <li>
+    <li class={styles.phrase}>
       <button class={styles.row} title="Copy" onClick={() => props.onCopy(phrase())}>
         <For each={props.parts}>
           {(part, i) => (
@@ -180,6 +189,9 @@ const Phrase = (props: { parts: string[][]; onCopy: (text: string) => void }) =>
           )}
         </For>
       </button>
+      <span class={styles.blockers}>
+        <For each={distinct()}>{word => <BlockButton word={word} onBlock={props.onBlock} label />}</For>
+      </span>
     </li>
   );
 };

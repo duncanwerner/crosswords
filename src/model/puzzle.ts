@@ -1,3 +1,4 @@
+import { toLetters } from './ascii';
 import { computeLights } from './lights';
 import { type Cell, type ClueEntry, type GridStyle, type LightKey, type Puzzle, type Symmetry, SCHEMA_VERSION, emptyCell } from './types';
 
@@ -45,6 +46,7 @@ export const createPuzzle = (options: NewPuzzleOptions): Puzzle => {
     symmetry: options.symmetry,
     cells,
     clues: {},
+    blocked: [],
   };
 };
 
@@ -60,3 +62,10 @@ export const pruneClues = (puzzle: Pick<Puzzle, 'rows' | 'cols' | 'cells' | 'clu
   }
   return clues;
 };
+
+/** normalize a block list: uppercase A-Z, no empties, unique, sorted */
+export const normalizeBlocked = (words: readonly string[]) =>
+  [...new Set(words.map(toLetters).filter(Boolean))].sort();
+
+/** split typed text ("els, ens nit") into words */
+export const parseWordList = (text: string) => normalizeBlocked(text.split(/[\s,;]+/));

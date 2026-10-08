@@ -29,6 +29,8 @@ describe('storage', () => {
     expect(p.cells).toHaveLength(4);
     expect(p.cells[1].letter).toBe('B');
     expect(p.style).toBe('blocked');
+    expect(p.blocked).toEqual([]);
+    expect(migrate({ id: 'y', rows: 1, cols: 1, blocked: ['nit', 'ÉLS', 'nit', 3] })!.blocked).toEqual(['ELS', 'NIT']);
     expect(migrate({ rows: 2 })).toBeUndefined();
     expect(migrate({ id: 'x', rows: 2, cols: 2, schema: 99 })).toBeUndefined();
   });

@@ -1,5 +1,5 @@
 import type { AnagramRequest, AnagramResult } from './anagrams';
-import type { Dictionary, LoadResult, Request, Response, SuggestRequest, SuggestResult } from './protocol';
+import type { Blocking, Dictionary, LoadResult, Request, Response, SuggestRequest, SuggestResult } from './protocol';
 import type { RegexRequest, RegexResult } from './regex';
 import type { IndexOptions } from './word-index';
 
@@ -69,7 +69,7 @@ const listUrl = (dictionary: Dictionary) =>
 export const words = {
   load: (dictionary: Dictionary, options: IndexOptions) =>
     call<LoadResult>({ type: 'load', url: listUrl(dictionary), dictionary, options }),
-  suggest: (req: SuggestRequest) => call<SuggestResult>({ type: 'suggest', ...req }, 10000),
-  anagrams: (req: AnagramRequest) => call<AnagramResult>({ type: 'anagrams', ...req }, 10000),
-  regex: (req: RegexRequest) => call<RegexResult>({ type: 'regex', ...req }, 4000),
+  suggest: (req: SuggestRequest & Blocking) => call<SuggestResult>({ type: 'suggest', ...req }, 10000),
+  anagrams: (req: AnagramRequest & Blocking) => call<AnagramResult>({ type: 'anagrams', ...req }, 10000),
+  regex: (req: RegexRequest & Blocking) => call<RegexResult>({ type: 'regex', ...req }, 4000),
 };

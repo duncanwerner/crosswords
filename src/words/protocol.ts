@@ -51,9 +51,14 @@ export interface LoadResult {
 
 export type Request =
   | { id: number; type: 'load'; url: string; dictionary: Dictionary; options: IndexOptions }
-  | ({ id: number; type: 'suggest' } & SuggestRequest)
-  | ({ id: number; type: 'anagrams' } & AnagramRequest)
-  | ({ id: number; type: 'regex' } & RegexRequest);
+  | ({ id: number; type: 'suggest' } & SuggestRequest & Blocking)
+  | ({ id: number; type: 'anagrams' } & AnagramRequest & Blocking)
+  | ({ id: number; type: 'regex' } & RegexRequest & Blocking);
+
+/** every query carries the puzzle's block list; the worker applies it to the index */
+export interface Blocking {
+  blocked: string[];
+}
 
 export type Response =
   | { id: number; ok: true; result: unknown }
