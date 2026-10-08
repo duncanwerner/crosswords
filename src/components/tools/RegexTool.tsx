@@ -2,7 +2,7 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, useCo
 import { EditorContext } from '../../state/editor';
 import { status } from '../../state/words';
 import { words } from '../../words/client';
-import { type RegexResult, compile, parseLengths } from '../../words/regex';
+import { type LengthOp, type RegexResult, compile, parseLengths } from '../../words/regex';
 import { FLAG_ABBREVIATION, FLAG_PROPER } from '../../words/word-index';
 import { BlockButton, CopyStatus, DictionaryGate, type ToolProps, createCopier, latestOnly } from './common';
 import styles from './tools.module.css';
@@ -13,6 +13,13 @@ const DEBOUNCE = 150;
 // inputs persist across puzzles for the session
 const [pattern, setPattern] = createSignal('');
 const [lengthText, setLengthText] = createSignal('');
+const [lengthOp, setLengthOp] = createSignal<LengthOp>('=');
+
+const LENGTH_OPS: Array<{ value: LengthOp; symbol: string; label: string }> = [
+  { value: '=', symbol: '=', label: 'exactly' },
+  { value: '>=', symbol: '≥', label: 'at least' },
+  { value: '<=', symbol: '≤', label: 'at most' },
+];
 
 /** dictionary search by regular expression: case-insensitive, unanchored unless ^ / $ */
 export const RegexTool = (props: ToolProps) => {
@@ -31,8 +38,8 @@ export const RegexTool = (props: ToolProps) => {
       return { ok: false as const, error: (err as Error).message.split(': ').pop() ?? 'Invalid pattern' };
     }
   });
-  const lengths = createMemo(() => parseLengths(lengthText()));
-  const key = () => `${pattern()}\u0000${lengthText()}`;
+  const lengths = createMemo(() => parseLengths(lengthText(), lengthOp()));
+  const key = () => `${pattern()}\u0000${lengths()?.min}-${lengths()?.max}`;
 
   const run = latestOnly();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -80,23 +87,33 @@ export const RegexTool = (props: ToolProps) => {
           value={pattern()}
           onInput={e => setPattern(e.currentTarget.value)}
         />
-        <label class={styles.label}>
+        <div class={styles.label}>
           Length
+          <select
+            class={['field', styles.op]}
+            aria-label="Length comparison"
+            title={`Length ${LENGTH_OPS.find(o => o.value === lengthOp())!.label}`}
+            value={lengthOp()}
+            onChange={e => setLengthOp(e.currentTarget.value as LengthOp)}
+          >
+            <For each={LENGTH_OPS}>{o => <option value={o.value} aria-label={o.label}>{o.symbol}</option>}</For>
+          </select>
           <input
             class={['field', styles.small]}
             placeholder="any"
-            aria-label="Length filter"
-            title="e.g. 7, 5-9 or 6+"
+            aria-label="Length"
+            title="A number, or a range like 5-9"
+            inputmode="numeric"
             value={lengthText()}
             onInput={e => setLengthText(e.currentTarget.value)}
           />
-        </label>
+        </div>
       </div>
       <Show when={compiled().error}>
         <div class={styles.fieldError} role="alert">{compiled().error}</div>
       </Show>
       <Show when={!lengths()}>
-        <div class={styles.fieldError} role="alert">Length should look like 7, 5-9 or 6+.</div>
+        <div class={styles.fieldError} role="alert">Length should be a number, or a range like 5-9.</div>
       </Show>
 
       <DictionaryGate>

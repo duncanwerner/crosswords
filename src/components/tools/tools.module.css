@@ -9,6 +9,7 @@
 .upper { text-transform: uppercase; }
 .upper::placeholder { text-transform: none; letter-spacing: 0; }
 .small { width: 7ch; }
+.op { width: auto; padding-right: 2px; }
 .label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
 
 .info { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 0 16px 6px; color: var(--muted); font-size: 12px; }

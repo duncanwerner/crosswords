@@ -40,12 +40,22 @@ export const regexSearch = (index: WordIndex, req: RegexRequest): RegexResult =>
   return result;
 };
 
-/** "7" -> 7..7, "5-9" -> 5..9, "6+" -> 6.., "" -> any. undefined if unreadable */
-export const parseLengths = (text: string): { min: number; max: number } | undefined => {
+/** how a plain number in the length box compares: exactly, at least, at most */
+export type LengthOp = '=' | '>=' | '<=';
+
+/**
+ * a length filter. a plain number is compared by op ("7" with '>=' -> 7..);
+ * a range ("5-9", "6+", "-4") stands on its own; "" is any length.
+ * undefined if unreadable.
+ */
+export const parseLengths = (text: string, op: LengthOp = '='): { min: number; max: number } | undefined => {
   const t = text.replace(/\s/g, '');
   if (!t) return { min: 1, max: Infinity };
   let m = /^(\d+)$/.exec(t);
-  if (m) return { min: +m[1], max: +m[1] };
+  if (m) {
+    const n = +m[1];
+    return op === '>=' ? { min: n, max: Infinity } : op === '<=' ? { min: 1, max: n } : { min: n, max: n };
+  }
   m = /^(\d*)-(\d*)$/.exec(t);
   if (m && (m[1] || m[2])) return { min: m[1] ? +m[1] : 1, max: m[2] ? +m[2] : Infinity };
   m = /^(\d+)\+$/.exec(t);

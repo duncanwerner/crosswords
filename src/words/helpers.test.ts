@@ -62,4 +62,13 @@ describe('regex', () => {
     expect(parseLengths('-4')).toEqual({ min: 1, max: 4 });
     expect(parseLengths('x')).toBeUndefined();
   });
+
+  it('compares a plain length by the chosen operator', () => {
+    expect(parseLengths('7', '=')).toEqual({ min: 7, max: 7 });
+    expect(parseLengths('7', '>=')).toEqual({ min: 7, max: Infinity });
+    expect(parseLengths('7', '<=')).toEqual({ min: 1, max: 7 });
+    // ranges and blanks ignore it
+    expect(parseLengths('5-9', '<=')).toEqual({ min: 5, max: 9 });
+    expect(parseLengths('', '>=')).toEqual({ min: 1, max: Infinity });
+  });
 });
