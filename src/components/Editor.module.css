@@ -22,7 +22,12 @@
   overflow: auto;
   align-items: center;
 }
-.gridBox { width: 100%; max-width: min(640px, calc(100dvh - 180px)); min-width: 240px; }
+/* --aspect is cols / rows: fit the grid's height, not just its width */
+.gridBox {
+  width: 100%;
+  max-width: min(640px, calc(640px * var(--aspect, 1)), calc((100dvh - 180px) * var(--aspect, 1)));
+  min-width: 240px;
+}
 
 .hint { color: var(--muted); font-size: 12px; text-align: center; max-width: 640px; }
 .hint kbd {
@@ -90,5 +95,5 @@
   .splitter, .panelSplitter { display: none; }
   .dock { flex-basis: auto; margin-top: 8px; }
   .dock > section > div:last-child { max-height: 60dvh; }
-  .gridBox { max-width: 640px; }
+  .gridBox { max-width: min(640px, calc(640px * var(--aspect, 1))); }
 }

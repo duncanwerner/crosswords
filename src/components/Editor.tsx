@@ -1,4 +1,4 @@
-import { Show, createSignal, onSettled, untrack } from 'solid-js';
+import { For, Show, createSignal, onSettled, untrack } from 'solid-js';
 import { createEditor, EditorContext } from '../state/editor';
 import { loadPuzzle } from '../state/library';
 import { openLibrary } from '../state/route';
@@ -176,8 +176,11 @@ const EditorView = (props: { editor: ReturnType<typeof createEditor> }) => {
         <Toolbar />
         <div ref={main} class={styles.main} style={{ '--panel-width': `${panelWidth()}px` }}>
           <div class={styles.left}>
-            <div class={styles.gridBox}>
-              <GridView />
+            <div class={styles.gridBox} style={{ '--aspect': ed.puzzle.cols / ed.puzzle.rows }}>
+              {/* the grid view fixes its dimensions when created, so remount it when a rotation swaps them */}
+              <For each={[`${ed.puzzle.rows}x${ed.puzzle.cols}`]}>
+                {() => <GridView />}
+              </For>
             </div>
             <p class={styles.hint}>
               <Show

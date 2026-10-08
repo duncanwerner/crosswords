@@ -1,4 +1,5 @@
 import { Show, snapshot, useContext } from 'solid-js';
+import type { Transform } from '../model/transform';
 import type { Puzzle, Symmetry } from '../model/types';
 import { EditorContext } from '../state/editor';
 import { exportPuzzle } from '../state/library';
@@ -15,6 +16,11 @@ export const Toolbar = () => {
 
   const mode = (m: 'design' | 'fill') => {
     ed.setMode(m);
+    ed.focusGrid();
+  };
+
+  const transform = (t: Transform) => {
+    ed.transform(t);
     ed.focusGrid();
   };
 
@@ -53,6 +59,11 @@ export const Toolbar = () => {
           <option value="rotational">Rotational symmetry</option>
           <option value="none">No symmetry</option>
         </select>
+        <div class={styles.group} role="group" aria-label="Transform grid">
+          <button class="btn ghost" onClick={() => transform('rotate')} title="Rotate a quarter turn clockwise">Rotate</button>
+          <button class="btn ghost" onClick={() => transform('flipH')} title="Mirror left to right">Flip ↔</button>
+          <button class="btn ghost" onClick={() => transform('flipV')} title="Mirror top to bottom">Flip ↕</button>
+        </div>
       </Show>
 
       <span class={styles.sep} />

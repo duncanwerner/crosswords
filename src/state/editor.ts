@@ -4,6 +4,7 @@ import { type Selection, settle } from '../model/navigation';
 import { normalizeBlocked } from '../model/puzzle';
 import { type WarningKind, computeStats } from '../model/stats';
 import { type Feature, symmetricPartner } from '../model/symmetry';
+import { type Transform, transformGrid } from '../model/transform';
 import type { ClueEntry, Direction, Light, LightKey, Puzzle, Symmetry } from '../model/types';
 import { savePuzzle } from './library';
 
@@ -195,6 +196,22 @@ export const createEditor = (initial: Puzzle) => {
     });
   };
 
+  /** rotate or mirror the whole grid; the selection moves with its cell */
+  const transform = (kind: Transform) => {
+    const next = transformGrid(puzzle, kind);
+    const sel = selection();
+    setPreview(undefined);
+    commit(draft => {
+      draft.rows = next.rows;
+      draft.cols = next.cols;
+      draft.cells = next.cells;
+      draft.clues = next.clues;
+    });
+    flush();
+    const dir = kind === 'rotate' ? (sel.dir === 'across' ? 'down' : 'across') : sel.dir;
+    select(next.moved[sel.cell], dir);
+  };
+
   const setLetter = (cell: number, letter: string, group?: string) => {
     const current = puzzle.cells[cell];
     if (current.block || (current.letter === letter && !current.auto)) return;
@@ -282,7 +299,7 @@ export const createEditor = (initial: Puzzle) => {
     canUndo: () => historySize().undo > 0,
     canRedo: () => historySize().redo > 0,
     undo, redo,
-    toggleFeature, setLetter, fillLight, clearLetters, applyFill, clearAutoFill, setClue, setTitle, setSetter, setSymmetry,
+    toggleFeature, transform, setLetter, fillLight, clearLetters, applyFill, clearAutoFill, setClue, setTitle, setSetter, setSymmetry,
     blocked, blockWords, unblockWord, clearBlocked,
     saveNow,
   };
