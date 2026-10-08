@@ -1,0 +1,38 @@
+.panel {
+  width: 100%;
+  max-width: 640px;
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.numbers { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; }
+.numbers div { display: flex; gap: 6px; }
+.numbers dt { color: var(--muted); }
+.numbers dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.lengths { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--muted); }
+.chip {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.warnings { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.warning {
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--warn);
+  cursor: pointer;
+  font-size: 12px;
+}
+.warning[aria-pressed='true'] { background: var(--cell-flagged); color: #5a1610; border-color: transparent; }
+.ok { color: var(--ok); font-size: 12px; }

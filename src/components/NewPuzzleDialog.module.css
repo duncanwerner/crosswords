@@ -1,0 +1,39 @@
+.dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+.dialog::backdrop { background: rgb(0 0 0 / 0.35); }
+
+.form { display: grid; gap: 16px; padding: 20px; }
+.form h2 { margin: 0; font: 600 20px/1.2 var(--font-display); }
+
+.label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.label :global(.field) { width: 100%; color: var(--text); font-size: 14px; }
+
+.size { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 8px; }
+.times { padding-bottom: 7px; color: var(--muted); }
+
+fieldset.choice { display: flex; gap: 6px; border: 0; padding: 0; margin: 0; }
+fieldset.choice legend { padding: 0; margin-bottom: 4px; font-size: 12px; color: var(--muted); }
+.option {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.option:has(input:disabled) { opacity: 0.45; cursor: default; }
+.option input { position: absolute; opacity: 0; pointer-events: none; }
+.option span { font-weight: 600; }
+.option small { color: var(--muted); font-size: 12px; }
+.option:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.buttons { display: flex; justify-content: flex-end; gap: 8px; }

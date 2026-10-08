@@ -1,0 +1,110 @@
+:root {
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: Georgia, 'Times New Roman', serif;
+  --font-grid: 'Helvetica Neue', Arial, sans-serif;
+
+  --bg: #f6f4ef;
+  --surface: #ffffff;
+  --surface-2: #f0ede6;
+  --text: #1d1d1b;
+  --muted: #6b6860;
+  --border: #d9d4c8;
+  --accent: #0b5aa2;
+  --accent-text: #ffffff;
+  --accent-soft: #dbe8f6;
+  --danger: #b3261e;
+  --warn: #9a5b00;
+  --ok: #2e7d32;
+  --focus: #0b5aa2;
+
+  /* the grid stays paper-coloured in both themes */
+  --cell: #ffffff;
+  --block: #1d1d1b;
+  --grid-line: #1d1d1b;
+  --cell-light: #fff3b0;
+  --cell-selected: #ffcf3f;
+  --cell-flagged: #f6c1bb;
+  --cell-text: #1d1d1b;
+  --bar: #1d1d1b;
+  --preview: #0b5aa2;
+
+  --radius: 6px;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 2px 8px rgb(0 0 0 / 0.05);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17181a;
+    --surface: #212226;
+    --surface-2: #2a2b30;
+    --text: #ecebe7;
+    --muted: #a19f99;
+    --border: #3a3b41;
+    --accent: #6aa8ea;
+    --accent-text: #0e1116;
+    --accent-soft: #23364d;
+    --danger: #f2867d;
+    --warn: #e3b25a;
+    --ok: #7cc47f;
+    --focus: #6aa8ea;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    --grid-line: #000000;
+    --block: #111214;
+    color-scheme: dark;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { min-height: 100%; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) { background: var(--surface-2); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+.btn.danger { color: var(--danger); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.ghost:hover:not(:disabled) { background: var(--surface-2); }
+
+.field {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.field:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 2px var(--accent-soft); }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

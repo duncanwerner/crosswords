@@ -1,0 +1,49 @@
+.wrap { position: relative; width: 100%; }
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.svg.design { cursor: cell; }
+.svg.barred { cursor: pointer; }
+
+.cell { fill: var(--cell); stroke: var(--grid-line); stroke-width: 1; }
+.cell.light { fill: var(--cell-light); }
+.cell.flagged { fill: var(--cell-flagged); }
+.cell.selected { fill: var(--cell-selected); }
+.cell.block { fill: var(--block); }
+.cell.block.flagged { fill: #7a2a24; }
+.cell.block.selected { fill: #5b4a14; }
+
+.unfocused .cell.selected:not(.block) { fill: var(--cell-light); }
+
+.number { font: 9px var(--font-grid); fill: var(--cell-text); pointer-events: none; }
+.letter {
+  font: 600 19px var(--font-grid);
+  fill: var(--cell-text);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.border { fill: none; stroke: var(--grid-line); stroke-width: 2.5; pointer-events: none; }
+.bar { stroke: var(--bar); stroke-width: 4; stroke-linecap: square; pointer-events: none; }
+.wordBreak { stroke: var(--bar); stroke-width: 3; pointer-events: none; }
+.hyphen { stroke: var(--bar); stroke-width: 2; pointer-events: none; }
+.preview { stroke: var(--preview); stroke-width: 4; stroke-linecap: round; opacity: 0.55; pointer-events: none; }
+
+.input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 16px; /* avoids iOS zoom on focus */
+}
