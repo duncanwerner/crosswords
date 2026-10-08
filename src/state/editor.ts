@@ -14,11 +14,18 @@ export type Mode = 'design' | 'fill';
 const HISTORY_LIMIT = 200;
 const SAVE_DELAY = 300;
 
+export interface EditorOptions {
+  /** where changes are saved; the library by default. play mode saves the solver's letters instead */
+  save?: (p: Puzzle) => void;
+  /** the starting mode; by default fill if the grid has letters, else design */
+  mode?: Mode;
+}
+
 /**
  * state for one open puzzle. create inside a component (it owns memos
  * and effects) and share via EditorContext.
  */
-export const createEditor = (initial: Puzzle) => {
+export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
   const [puzzle, setPuzzle] = createStore<Puzzle>(initial);
 
   /**
@@ -38,7 +45,7 @@ export const createEditor = (initial: Puzzle) => {
   const autoFilled = createMemo(() => puzzle.cells.reduce((n, c) => n + (c.auto ? 1 : 0), 0), { name: 'autoFilled' });
 
   const hasLetters = initial.cells.some(c => c.letter);
-  const [mode, setModeSignal] = createSignal<Mode>(hasLetters ? 'fill' : 'design');
+  const [mode, setModeSignal] = createSignal<Mode>(options.mode ?? (hasLetters ? 'fill' : 'design'));
 
   const firstWhite = Math.max(0, initial.cells.findIndex(c => !c.block));
   const [selection, setSelection] = createSignal<Selection>({ cell: firstWhite, dir: 'across' });
@@ -162,7 +169,7 @@ export const createEditor = (initial: Puzzle) => {
     if (!dirty) return;
     dirty = false;
     flush();
-    savePuzzle(snapshot(puzzle) as Puzzle);
+    (options.save ?? savePuzzle)(snapshot(puzzle) as Puzzle);
   };
 
   const scheduleSave = () => {

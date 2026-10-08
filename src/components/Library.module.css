@@ -29,7 +29,7 @@
 .thumb { aspect-ratio: 1; margin: 0 auto 12px; max-width: 160px; transition: transform 120ms; }
 .title { font: 600 16px/1.25 var(--font-display); margin: 0 0 4px; overflow-wrap: anywhere; }
 .meta { color: var(--muted); font-size: 12px; }
-.actions { display: flex; gap: 2px; padding: 4px 8px 8px; margin-top: auto; }
+.actions { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px 8px 8px; margin-top: auto; }
 .actions :global(.btn) { height: 28px; padding: 0 8px; font-size: 12px; }
 
 .empty {

@@ -1,6 +1,6 @@
 import { For, Show, createSignal } from 'solid-js';
 import { deletePuzzle, duplicatePuzzle, exportPuzzle, importPuzzle, library, loadPuzzle } from '../state/library';
-import { openPuzzle } from '../state/route';
+import { openPuzzle, playPuzzle } from '../state/route';
 import styles from './Library.module.css';
 import { NewPuzzleDialog } from './NewPuzzleDialog';
 import { Thumbnail } from './Thumbnail';
@@ -80,6 +80,7 @@ export const Library = () => {
                   </div>
                 </button>
                 <div class={styles.actions}>
+                  <button class="btn ghost" onClick={() => playPuzzle(s().id)} title="Solve this puzzle">Play</button>
                   <button class="btn ghost" onClick={() => duplicatePuzzle(s().id)}>Duplicate</button>
                   <button class="btn ghost" onClick={() => onExport(s().id)}>Export</button>
                   <button class="btn ghost danger" onClick={() => onDelete(s().id, s().title)}>Delete</button>

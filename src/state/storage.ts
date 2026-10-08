@@ -1,4 +1,5 @@
 import { toLetters } from '../model/ascii';
+import { type PlayProgress, parseProgress } from '../model/play';
 import { normalizeBlocked, pruneClues } from '../model/puzzle';
 import { type Cell, type ClueEntry, type LightKey, type Puzzle, SCHEMA_VERSION, emptyCell } from '../model/types';
 
@@ -24,6 +25,7 @@ export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 const INDEX_KEY = 'cross:index';
 const puzzleKey = (id: string) => `cross:puzzle:${id}`;
+const progressKey = (id: string) => `cross:play:${id}`;
 
 const defaultStorage = (): StorageLike | undefined => {
   try {
@@ -132,15 +134,21 @@ export const createStorage = (storage: StorageLike | undefined = defaultStorage(
 
   const savePuzzle = (p: Puzzle) => write(puzzleKey(p.id), serialize(p));
 
+  /** removes the puzzle and any play progress on it */
   const removePuzzle = (id: string) => {
     try {
       storage?.removeItem(puzzleKey(id));
+      storage?.removeItem(progressKey(id));
     } catch {
       // ignore
     }
   };
 
-  return { loadIndex, saveIndex, loadPuzzle, savePuzzle, removePuzzle };
+  const loadProgress = (id: string) => parseProgress(read(progressKey(id)));
+
+  const saveProgress = (id: string, progress: PlayProgress) => write(progressKey(id), JSON.stringify(progress));
+
+  return { loadIndex, saveIndex, loadPuzzle, savePuzzle, removePuzzle, loadProgress, saveProgress };
 };
 
 export type PuzzleStorage = ReturnType<typeof createStorage>;

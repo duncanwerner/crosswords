@@ -1,5 +1,6 @@
 import { createStore, snapshot } from 'solid-js';
 import { type NewPuzzleOptions, createPuzzle, newId } from '../model/puzzle';
+import { type PlayProgress } from '../model/play';
 import type { Puzzle } from '../model/types';
 import { type PuzzleSummary, createStorage, migrate, serialize, summarize } from './storage';
 
@@ -44,6 +45,10 @@ export const savePuzzle = (p: Puzzle) => {
     updateIndex(list => list.map(s => (s.id === p.id ? summarize(p) : s)));
   }
 };
+
+/** a solver's letters in play mode, kept apart from the puzzle */
+export const loadProgress = (id: string) => storage.loadProgress(id);
+export const saveProgress = (id: string, progress: PlayProgress) => storage.saveProgress(id, progress);
 
 export const duplicatePuzzle = (id: string) => {
   const p = storage.loadPuzzle(id);

@@ -3,7 +3,7 @@ import type { Transform } from '../model/transform';
 import type { Puzzle, Symmetry } from '../model/types';
 import { EditorContext } from '../state/editor';
 import { exportPuzzle } from '../state/library';
-import { openLibrary } from '../state/route';
+import { openLibrary, playPuzzle } from '../state/route';
 import styles from './Toolbar.module.css';
 
 export const Toolbar = () => {
@@ -17,6 +17,12 @@ export const Toolbar = () => {
   const mode = (m: 'design' | 'fill') => {
     ed.setMode(m);
     ed.focusGrid();
+  };
+
+  /** save first: play mode loads the puzzle from storage */
+  const play = () => {
+    ed.saveNow();
+    playPuzzle(ed.puzzle.id);
   };
 
   const transform = (t: Transform) => {
@@ -73,6 +79,7 @@ export const Toolbar = () => {
         <button class="btn ghost" disabled={!ed.canRedo()} onClick={() => ed.redo()} title="Redo (Ctrl+Shift+Z)">Redo</button>
         <button class="btn ghost" disabled={!ed.filled()} onClick={clear}>Clear letters</button>
         <button class="btn ghost" onClick={() => exportPuzzle(snapshot(ed.puzzle) as Puzzle)}>Export</button>
+        <button class="btn" onClick={play} title="Solve this puzzle as a solver would">Play</button>
       </div>
     </header>
   );

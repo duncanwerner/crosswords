@@ -31,6 +31,10 @@ backups).
     before" when the log already has that answer. Kept in IndexedDB, with
     its own export/import (puzzle exports don't include it).
   - Blocked: a per-puzzle list of words never to offer
+- **Play mode**: solve a puzzle as a solver would (**Play** in the editor's
+  toolbar or on a library card). An empty grid, read-only clues and no
+  tools; your letters are saved apart from the puzzle, and it says when
+  you've solved it, if the setter's grid is complete.
 - Undo/redo for every edit; resizable panels; light and dark themes.
 
 ```sh
@@ -44,13 +48,15 @@ npm run build      # typecheck + production build
 
 - `src/model/` – pure TS, no Solid: numbering (`lights.ts`), linked
   clues (`links.ts`), symmetry, grid rotate/flip (`transform.ts`),
-  enumerations, navigation, grid stats, puzzle factory. Unit tested.
+  enumerations, navigation, grid stats, puzzle factory, play progress
+  (`play.ts`). Unit tested.
 - `src/state/` – Solid state: `library.ts` (global puzzle index),
   `editor.ts` (one open puzzle: store, memos, undo/redo, autosave),
   `storage.ts` (localStorage + schema migration), `route.ts` (hash routing),
   `clue-log.ts` (the clue log in IndexedDB, synced between tabs).
 - `src/components/` – UI. `GridView` is an SVG grid with a hidden input for
-  keyboard capture. `tools/` is the helper dock under the clue list (Words,
+  keyboard capture. `Play` reuses the editor state on a copy of the
+  puzzle with the solver's letters, saving them instead of the puzzle. `tools/` is the helper dock under the clue list (Words,
   Anagrams, Regex, Auto-fill, Blocked); add a helper by writing a component
   that takes `ToolProps` and listing it in `tools/registry.ts`.
 - `src/words/` – the word index (`word-index.ts`: per-length bitsets for each
