@@ -30,6 +30,8 @@
   pointer-events: none;
 }
 
+.ghost { fill: var(--preview); opacity: 0.6; }
+
 .border { fill: none; stroke: var(--grid-line); stroke-width: 2.5; pointer-events: none; }
 .bar { stroke: var(--bar); stroke-width: 4; stroke-linecap: square; pointer-events: none; }
 .wordBreak { stroke: var(--bar); stroke-width: 3; pointer-events: none; }

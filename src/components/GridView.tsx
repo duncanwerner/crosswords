@@ -1,4 +1,5 @@
 import { For, Repeat, Show, createMemo, createSignal, onSettled, untrack, useContext } from 'solid-js';
+import { toLetters } from '../model/ascii';
 import { breaks, validate } from '../model/enumeration';
 import { lightAt } from '../model/lights';
 import { advance, move, nextLight, step } from '../model/navigation';
@@ -46,6 +47,14 @@ export const GridView = () => {
   const design = () => ed.mode() === 'design';
 
   const highlight = createMemo(() => new Set(ed.currentLight()?.cells ?? []));
+
+  /** cell -> ghost letter from a hovered suggestion */
+  const ghosts = createMemo(() => {
+    const map = new Map<number, string>();
+    const pv = ed.preview();
+    pv?.cells.forEach((cell, i) => map.set(cell, pv.word[i]));
+    return map;
+  });
 
   /** word breaks and hyphens from valid enumerations */
   const breakMarks = createMemo(() => {
@@ -219,7 +228,7 @@ export const GridView = () => {
 
   /** mobile keyboards often send 'Unidentified' keydowns; pick letters up here instead */
   const onInput = () => {
-    const letters = input.value.toUpperCase().replace(/[^A-Z]/g, '');
+    const letters = toLetters(input.value);
     input.value = '';
     if (design()) return;
     for (const letter of letters) typeLetter(letter);
@@ -267,6 +276,9 @@ export const GridView = () => {
               </Show>
               <Show when={!p.cells[i].block && p.cells[i].letter}>
                 <text class={styles.letter} x={x(i) + S / 2} y={y(i) + S / 2 + 3}>{p.cells[i].letter}</text>
+              </Show>
+              <Show when={!p.cells[i].block && !p.cells[i].letter && ghosts().get(i)}>
+                <text class={[styles.letter, styles.ghost]} x={x(i) + S / 2} y={y(i) + S / 2 + 3}>{ghosts().get(i)}</text>
               </Show>
             </g>
           )}

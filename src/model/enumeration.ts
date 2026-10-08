@@ -1,3 +1,5 @@
+import { toAscii } from './ascii';
+
 /**
  * cryptic enumerations: "5", "3,4", "4-5", "2,3,2-4". commas separate
  * words, hyphens separate parts of a hyphenated word. we accept spaces
@@ -59,10 +61,11 @@ export const breaks = (text: string): Array<{ after: number; type: Separator }> 
 
 /**
  * "top hat" -> { letters: "TOPHAT", enumeration: "3,3" }. single words give
- * an empty enumeration (i.e. the default). apostrophes are dropped.
+ * an empty enumeration (i.e. the default). apostrophes are dropped and
+ * accented letters folded to ascii.
  */
 export const fromAnswer = (answer: string): { letters: string; enumeration: string } => {
-  const words = answer
+  const words = toAscii(answer)
     .toUpperCase()
     .replace(/['’]/g, '')
     .trim()

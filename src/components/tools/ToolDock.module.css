@@ -1,0 +1,42 @@
+.dock {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 8px 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.collapsed .head { border-bottom: 0; }
+
+.tabs { display: flex; gap: 2px; flex: 1; }
+.tabs button {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+.tabs button:hover { color: var(--text); background: var(--surface-2); }
+.tabs button[aria-selected='true'] { background: var(--accent-soft); color: var(--text); }
+
+.settings { display: flex; align-items: center; gap: 8px; }
+.settings select { height: 28px; padding: 0 4px; font-size: 12px; }
+.check { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.toggle { width: 28px; height: 28px; padding: 0; justify-content: center; }
+
+.body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.body[hidden] { display: none; }
+.pane { flex: 1; min-height: 0; }
+.pane[hidden] { display: none; }

@@ -1,4 +1,4 @@
-import { Show, onSettled, untrack } from 'solid-js';
+import { Show, createSignal, onSettled, untrack } from 'solid-js';
 import { createEditor, EditorContext } from '../state/editor';
 import { loadPuzzle } from '../state/library';
 import { openLibrary } from '../state/route';
@@ -6,6 +6,7 @@ import { CluePanel } from './CluePanel';
 import styles from './Editor.module.css';
 import { GridView } from './GridView';
 import { StatsPanel } from './StatsPanel';
+import { ToolDock } from './tools/ToolDock';
 import { Toolbar } from './Toolbar';
 
 export const Editor = (props: { id: string }) => {
@@ -31,8 +32,70 @@ const isTextField = (el: EventTarget | null) =>
   !el.hasAttribute('data-grid-input') &&
   (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement || el.isContentEditable);
 
+interface DockState {
+  height: number;
+  collapsed: boolean;
+}
+const DOCK_KEY = 'cross:dock';
+const MIN_DOCK = 160;
+const MIN_CLUES = 160;
+
+const readDock = (): DockState => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DOCK_KEY) || '{}');
+    return {
+      height: Number.isFinite(raw.height) ? raw.height : 340,
+      collapsed: !!raw.collapsed,
+    };
+  }
+  catch {
+    return { height: 340, collapsed: false };
+  }
+};
+
 const EditorView = (props: { editor: ReturnType<typeof createEditor> }) => {
   const ed = untrack(() => props.editor);
+
+  // clue list above, tools dock below, split by a draggable handle
+  const [dock, setDockSignal] = createSignal<DockState>(readDock());
+  const setDock = (patch: Partial<DockState>) => {
+    const next = { ...dock(), ...patch };
+    setDockSignal(next);
+    try {
+      localStorage.setItem(DOCK_KEY, JSON.stringify(next));
+    }
+    catch {
+      // preference only
+    }
+  };
+  let right!: HTMLDivElement;
+  const clampDock = (height: number) =>
+    Math.round(Math.max(MIN_DOCK, Math.min(height, right.clientHeight - MIN_CLUES)));
+
+  const onSplitDown = (e: PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const handle = e.currentTarget as HTMLElement;
+    handle.setPointerCapture(e.pointerId);
+    const startY = e.clientY;
+    const startHeight = dock().height;
+    const onMove = (m: PointerEvent) => setDock({ height: clampDock(startHeight - (m.clientY - startY)), collapsed: false });
+    const onUp = () => {
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onUp);
+      handle.removeEventListener('pointercancel', onUp);
+    };
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
+  };
+
+  const onSplitKey = (e: KeyboardEvent) => {
+    const delta = e.key === 'ArrowUp' ? 24 : e.key === 'ArrowDown' ? -24 : 0;
+    if (!delta) return;
+    e.preventDefault();
+    setDock({ height: clampDock(dock().height + delta), collapsed: false });
+  };
 
   // undo/redo everywhere except text fields, which keep their native undo
   onSettled(() => {
@@ -76,8 +139,28 @@ const EditorView = (props: { editor: ReturnType<typeof createEditor> }) => {
             </p>
             <StatsPanel />
           </div>
-          <div class={styles.right}>
-            <CluePanel />
+          <div
+            ref={right}
+            class={[styles.right, { [styles.dockCollapsed]: dock().collapsed }]}
+            style={{ '--dock-height': `${dock().height}px` }}
+          >
+            <div class={styles.clues}>
+              <CluePanel />
+            </div>
+            <Show when={!dock().collapsed}>
+              <div
+                class={styles.splitter}
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label="Resize tools"
+                tabindex={0}
+                onPointerDown={onSplitDown}
+                onKeyDown={onSplitKey}
+              />
+            </Show>
+            <div class={styles.dock}>
+              <ToolDock collapsed={dock().collapsed} onToggle={() => setDock({ collapsed: !dock().collapsed })} />
+            </div>
           </div>
         </div>
       </div>

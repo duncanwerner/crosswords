@@ -35,6 +35,8 @@ describe('enumeration', () => {
     expect(fromAnswer('well-to-do')).toEqual({ letters: 'WELLTODO', enumeration: '4-2-2' });
     expect(fromAnswer("o'clock")).toEqual({ letters: 'OCLOCK', enumeration: '' });
     expect(fromAnswer('man-of-war  ship')).toEqual({ letters: 'MANOFWARSHIP', enumeration: '3-2-3,4' });
+    expect(fromAnswer('café au lait')).toEqual({ letters: 'CAFEAULAIT', enumeration: '4,2,4' });
+    expect(fromAnswer('smørrebrød')).toEqual({ letters: 'SMORREBROD', enumeration: '' });
     expect(fromAnswer('')).toEqual({ letters: '', enumeration: '' });
   });
 });

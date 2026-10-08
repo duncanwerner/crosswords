@@ -19,8 +19,17 @@ npm run build      # typecheck + production build
   `editor.ts` (one open puzzle: store, memos, undo/redo, autosave),
   `storage.ts` (localStorage + schema migration), `route.ts` (hash routing).
 - `src/components/` – UI. `GridView` is an SVG grid with a hidden input for
-  keyboard capture.
-- `public/wordlists/` – word lists for the upcoming auto-fill (not loaded yet).
+  keyboard capture. `tools/` is the helper dock under the clue list (Words,
+  Anagrams, Regex); add a helper by writing a component that takes
+  `ToolProps` and listing it in `tools/registry.ts`.
+- `src/words/` – the word index (`word-index.ts`: per-length bitsets for each
+  position × letter, so pattern matches are ANDs and counts are popcounts),
+  suggestion ranking, anagram and regex search, and the Web Worker that hosts
+  them. The client restarts the worker if a request runs too long (e.g. a
+  catastrophically backtracking regex).
+- `public/wordlists/` – dictionaries, pure ASCII. After changing them, run
+  `node scripts/clean-wordlists.ts` to fold diacritics (é→E, ø→O) and dedupe.
+  All matching is on uppercase A–Z; user input goes through `toLetters()`.
 - `old-code/` – the previous implementation, kept for reference.
 
 ## Notes on Solid 2

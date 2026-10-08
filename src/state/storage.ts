@@ -1,3 +1,4 @@
+import { toLetters } from '../model/ascii';
 import { pruneClues } from '../model/puzzle';
 import { type Cell, type Puzzle, SCHEMA_VERSION, emptyCell } from '../model/types';
 
@@ -56,7 +57,7 @@ export const migrate = (raw: unknown): Puzzle | undefined => {
   const cells: Cell[] = [];
   for (let i = 0; i < rows * cols; i++) {
     const c: Partial<Cell> = (Array.isArray(src.cells) && src.cells[i]) || {};
-    const letter = typeof c.letter === 'string' ? c.letter.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1) : '';
+    const letter = typeof c.letter === 'string' ? toLetters(c.letter).slice(0, 1) : '';
     cells.push({ ...emptyCell(), block: !!c.block, barRight: !!c.barRight, barBottom: !!c.barBottom, letter });
   }
   const now = Date.now();

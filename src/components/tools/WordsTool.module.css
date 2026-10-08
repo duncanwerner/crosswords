@@ -1,0 +1,38 @@
+.list { list-style: none; margin: 0; padding: 4px 0 0; }
+
+.item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 5px 16px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.item:hover, .item:focus-visible { background: var(--accent-soft); outline: none; }
+.word { font: 600 15px/1.2 var(--font-grid); letter-spacing: 0.08em; }
+.word .fixed { color: var(--muted); }
+.dead .word { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--danger); }
+.tag {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+}
+.used { color: var(--warn); }
+
+/* crossing health: 4 bars */
+.meter { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
+.meter i { width: 4px; border-radius: 1px; background: var(--border); }
+.meter i:nth-child(1) { height: 4px; }
+.meter i:nth-child(2) { height: 6px; }
+.meter i:nth-child(3) { height: 9px; }
+.meter i:nth-child(4) { height: 12px; }
+.meter i.on { background: var(--ok); }
+.meter.low i.on { background: var(--warn); }
+.meter.dead i:first-child { background: var(--danger); }
+

@@ -46,6 +46,9 @@ export const createEditor = (initial: Puzzle) => {
     return new Set(kind ? stats().warnings.find(w => w.kind === kind)?.cells : []);
   });
 
+  /** ghost letters shown in empty cells while hovering a suggestion */
+  const [preview, setPreview] = createSignal<{ cells: number[]; word: string }>();
+
   /** the grid registers its focus function so other panels can hand focus back */
   let gridFocus = () => {};
   const registerGridFocus = (fn: () => void) => {
@@ -219,6 +222,7 @@ export const createEditor = (initial: Puzzle) => {
     puzzle, map, stats, filled, mode, setMode, selection, select, selectLight, setSelection,
     currentLight, flagged, flaggedKind, setFlaggedKind,
     registerGridFocus, focusGrid: () => gridFocus(),
+    preview, setPreview,
     canUndo: () => historySize().undo > 0,
     canRedo: () => historySize().redo > 0,
     undo, redo,
