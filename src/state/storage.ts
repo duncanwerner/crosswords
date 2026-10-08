@@ -58,7 +58,7 @@ export const migrate = (raw: unknown): Puzzle | undefined => {
   for (let i = 0; i < rows * cols; i++) {
     const c: Partial<Cell> = (Array.isArray(src.cells) && src.cells[i]) || {};
     const letter = typeof c.letter === 'string' ? toLetters(c.letter).slice(0, 1) : '';
-    cells.push({ ...emptyCell(), block: !!c.block, barRight: !!c.barRight, barBottom: !!c.barBottom, letter });
+    cells.push({ ...emptyCell(), block: !!c.block, barRight: !!c.barRight, barBottom: !!c.barBottom, letter, auto: !!letter && !!c.auto });
   }
   const now = Date.now();
   return {

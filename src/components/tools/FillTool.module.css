@@ -1,0 +1,11 @@
+.status { display: grid; gap: 8px; padding: 10px 16px; }
+.status p { margin: 0; }
+.ok { color: var(--ok); }
+.bad { color: var(--warn); }
+.tip { color: var(--muted); font-size: 12px; }
+.actions { display: flex; gap: 8px; }
+
+.meter { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.meter div { height: 100%; background: var(--accent); transition: width 150ms; }
+
+.blocked { text-decoration: line-through; color: var(--muted); }

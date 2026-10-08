@@ -29,6 +29,11 @@ npm run build      # typecheck + production build
   catastrophically backtracking regex). Each query carries the puzzle's
   block list, which the index applies to its allowed set, so blocked words
   vanish from every helper (and from crossing counts) without per-tool code.
+- `src/words/fill.ts` – the auto-fill: most-constrained light first,
+  candidates ordered by crossing options (dead ends pruned), no repeats,
+  Luby restarts. A step machine, so the worker runs it in slices and can
+  report progress and honour cancel. Cells carry an `auto` flag so re-fills
+  replace only auto-fill letters.
 - `public/wordlists/` – dictionaries, pure ASCII. After changing them, run
   `node scripts/clean-wordlists.ts` to fold diacritics (é→E, ø→O) and dedupe.
   All matching is on uppercase A–Z; user input goes through `toLetters()`.

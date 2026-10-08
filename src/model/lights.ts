@@ -1,9 +1,12 @@
 import { type Cell, type Direction, type Light, lightKey } from './types';
 
+/** what numbering needs from a cell: its structure, not its letter */
+export type ShapeCell = Pick<Cell, 'block' | 'barRight' | 'barBottom'>;
+
 export interface GridShape {
   rows: number;
   cols: number;
-  cells: readonly Cell[];
+  cells: readonly ShapeCell[];
 }
 
 export interface LightMap {

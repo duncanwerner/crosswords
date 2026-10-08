@@ -27,12 +27,13 @@ export const createEditor = (initial: Puzzle) => {
   const shape = createMemo<GridShape>(() => ({
     rows: puzzle.rows,
     cols: puzzle.cols,
-    cells: puzzle.cells.map(c => ({ block: c.block, barRight: c.barRight, barBottom: c.barBottom, letter: '' })),
+    cells: puzzle.cells.map(c => ({ block: c.block, barRight: c.barRight, barBottom: c.barBottom })),
   }), { name: 'shape' });
 
   const map = createMemo(() => computeLights(shape()), { name: 'lights' });
   const stats = createMemo(() => computeStats(shape(), map(), puzzle.symmetry), { name: 'stats' });
   const filled = createMemo(() => puzzle.cells.reduce((n, c) => n + (c.letter ? 1 : 0), 0), { name: 'filled' });
+  const autoFilled = createMemo(() => puzzle.cells.reduce((n, c) => n + (c.auto ? 1 : 0), 0), { name: 'autoFilled' });
 
   const hasLetters = initial.cells.some(c => c.letter);
   const [mode, setModeSignal] = createSignal<Mode>(hasLetters ? 'fill' : 'design');
@@ -47,8 +48,11 @@ export const createEditor = (initial: Puzzle) => {
     return new Set(kind ? stats().warnings.find(w => w.kind === kind)?.cells : []);
   });
 
-  /** ghost letters shown in empty cells while hovering a suggestion */
-  const [preview, setPreview] = createSignal<{ cells: number[]; word: string }>();
+  /**
+   * ghost letters shown in empty cells: a hovered suggestion, or an
+   * auto-fill result awaiting Apply (which may also replace auto letters)
+   */
+  const [preview, setPreview] = createSignal<{ cells: number[]; word: string; replaceAuto?: boolean }>();
 
   /** the grid registers its focus function so other panels can hand focus back */
   let gridFocus = () => {};
@@ -81,8 +85,12 @@ export const createEditor = (initial: Puzzle) => {
    */
   const copy = () => structuredClone(snapshot(puzzle)) as Puzzle;
 
-  const commit = (fn: (draft: Puzzle) => void, group?: string) => {
+  /** bumped by every change to cells (letters, blocks, bars), and by undo/redo */
+  const [gridVersion, setGridVersion] = createSignal(0);
+
+  const commit = (fn: (draft: Puzzle) => void, group?: string, touchesGrid = true) => {
     flush();
+    if (touchesGrid) setGridVersion(v => v + 1);
     if (!group || group !== lastGroup) {
       undoStack.push(copy());
       if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
@@ -104,6 +112,7 @@ export const createEditor = (initial: Puzzle) => {
     to.push(copy());
     lastGroup = undefined;
     syncHistory();
+    setGridVersion(v => v + 1);
     setPuzzle(() => ({ ...prev, updated: Date.now() }));
     scheduleSave();
   };
@@ -178,15 +187,20 @@ export const createEditor = (initial: Puzzle) => {
       for (const t of targets) {
         const cell = draft.cells[t.row * cols + t.col];
         cell[t.feature] = value;
-        if (t.feature === 'block' && value) cell.letter = '';
+        if (t.feature === 'block' && value) {
+          cell.letter = '';
+          cell.auto = false;
+        }
       }
     });
   };
 
   const setLetter = (cell: number, letter: string, group?: string) => {
-    if (puzzle.cells[cell].block || puzzle.cells[cell].letter === letter) return;
+    const current = puzzle.cells[cell];
+    if (current.block || (current.letter === letter && !current.auto)) return;
     commit(draft => {
       draft.cells[cell].letter = letter;
+      draft.cells[cell].auto = false;
     }, group);
   };
 
@@ -194,6 +208,7 @@ export const createEditor = (initial: Puzzle) => {
     commit(draft => {
       light.cells.forEach((cell, i) => {
         draft.cells[cell].letter = letters[i] || '';
+        draft.cells[cell].auto = false;
       });
       if (enumeration !== undefined) {
         const entry = draft.clues[light.key] ?? { text: '', enumeration: '' };
@@ -204,7 +219,36 @@ export const createEditor = (initial: Puzzle) => {
 
   const clearLetters = () => {
     commit(draft => {
-      for (const cell of draft.cells) cell.letter = '';
+      for (const cell of draft.cells) {
+        cell.letter = '';
+        cell.auto = false;
+      }
+    });
+  };
+
+  /**
+   * apply an auto-fill result ('.' for no letter). your own letters are
+   * never touched; with replaceAuto, earlier auto-fill letters give way.
+   */
+  const applyFill = (letters: string, replaceAuto: boolean) => {
+    commit(draft => {
+      draft.cells.forEach((cell, i) => {
+        if (cell.block) return;
+        if (cell.letter && !(cell.auto && replaceAuto)) return;
+        const next = letters[i] && letters[i] !== '.' ? letters[i] : '';
+        cell.letter = next;
+        cell.auto = !!next;
+      });
+    });
+  };
+
+  const clearAutoFill = () => {
+    commit(draft => {
+      for (const cell of draft.cells) {
+        if (!cell.auto) continue;
+        cell.letter = '';
+        cell.auto = false;
+      }
     });
   };
 
@@ -212,7 +256,7 @@ export const createEditor = (initial: Puzzle) => {
     commit(draft => {
       const entry = draft.clues[key] ?? { text: '', enumeration: '' };
       draft.clues[key] = { ...entry, ...patch };
-    }, `clue:${key}:${Object.keys(patch).join()}`);
+    }, `clue:${key}:${Object.keys(patch).join()}`, false);
   };
 
   /** the block list, as a plain array that only changes when its contents do */
@@ -221,24 +265,24 @@ export const createEditor = (initial: Puzzle) => {
   const blockWords = (words: readonly string[]) => {
     const next = normalizeBlocked([...puzzle.blocked, ...words]);
     if (next.join() === puzzle.blocked.join()) return;
-    commit(d => { d.blocked = next; });
+    commit(d => { d.blocked = next; }, undefined, false);
   };
-  const unblockWord = (word: string) => commit(d => { d.blocked = d.blocked.filter(w => w !== word); });
-  const clearBlocked = () => commit(d => { d.blocked = []; });
+  const unblockWord = (word: string) => commit(d => { d.blocked = d.blocked.filter(w => w !== word); }, undefined, false);
+  const clearBlocked = () => commit(d => { d.blocked = []; }, undefined, false);
 
-  const setTitle = (title: string) => commit(d => { d.title = title; }, 'title');
-  const setSetter = (setter: string) => commit(d => { d.setter = setter; }, 'setter');
-  const setSymmetry = (symmetry: Symmetry) => commit(d => { d.symmetry = symmetry; });
+  const setTitle = (title: string) => commit(d => { d.title = title; }, 'title', false);
+  const setSetter = (setter: string) => commit(d => { d.setter = setter; }, 'setter', false);
+  const setSymmetry = (symmetry: Symmetry) => commit(d => { d.symmetry = symmetry; }, undefined, false);
 
   return {
-    puzzle, map, stats, filled, mode, setMode, selection, select, selectLight, setSelection,
+    puzzle, map, stats, filled, autoFilled, gridVersion, mode, setMode, selection, select, selectLight, setSelection,
     currentLight, flagged, flaggedKind, setFlaggedKind,
     registerGridFocus, focusGrid: () => gridFocus(),
     preview, setPreview,
     canUndo: () => historySize().undo > 0,
     canRedo: () => historySize().redo > 0,
     undo, redo,
-    toggleFeature, setLetter, fillLight, clearLetters, setClue, setTitle, setSetter, setSymmetry,
+    toggleFeature, setLetter, fillLight, clearLetters, applyFill, clearAutoFill, setClue, setTitle, setSetter, setSymmetry,
     blocked, blockWords, unblockWord, clearBlocked,
     saveNow,
   };

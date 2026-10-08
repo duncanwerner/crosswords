@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
-import type { Dictionary, LoadResult, Request, Response } from './protocol';
+import type { Blocking, Dictionary, FillProgress, FillRequest, LoadResult, Request, Response } from './protocol';
 import { anagrams } from './anagrams';
+import { Filler, type FillResult } from './fill';
 import { regexSearch } from './regex';
 import { suggest } from './suggest';
 import { WordIndex } from './word-index';
@@ -28,6 +29,47 @@ const index = async (blocked: string[]) => {
   return loadedIndex;
 };
 
+/** fills in progress, by request id, so a cancel message can reach them */
+const fills = new Map<number, { cancelled: boolean }>();
+
+const SLICE_MS = 25;
+const PROGRESS_MS = 150;
+
+/**
+ * run the filler in short slices, yielding between them so cancel (and
+ * other queries) get through. stops when done, out of time, or cancelled.
+ */
+const fill = async (id: number, req: FillRequest & Blocking): Promise<FillResult> => {
+  const filler = new Filler(await index(req.blocked), req);
+  const control = { cancelled: false };
+  fills.set(id, control);
+  const start = performance.now();
+  let lastProgress = start;
+  try {
+    for (;;) {
+      const sliceEnd = performance.now() + SLICE_MS;
+      let state: ReturnType<Filler['run']>;
+      do state = filler.run(10);
+      while (state === 'running' && performance.now() < sliceEnd);
+
+      const now = performance.now();
+      const ms = now - start;
+      if (state !== 'running') return filler.result(state, ms);
+      if (control.cancelled) return filler.result('cancelled', ms);
+      if (ms >= req.timeMs) return filler.result('partial', ms);
+      if (now - lastProgress >= PROGRESS_MS) {
+        lastProgress = now;
+        const progress: FillProgress = { filled: filler.bestFilled, total: filler.total, nodes: filler.nodes, restarts: filler.restarts, ms };
+        self.postMessage({ id, progress } satisfies Response);
+      }
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+  }
+  finally {
+    fills.delete(id);
+  }
+};
+
 const handle = async (msg: Request): Promise<unknown> => {
   switch (msg.type) {
     case 'load': {
@@ -52,6 +94,13 @@ const handle = async (msg: Request): Promise<unknown> => {
       return anagrams(await index(msg.blocked), msg);
     case 'regex':
       return regexSearch(await index(msg.blocked), msg);
+    case 'fill':
+      return fill(msg.id, msg);
+    case 'cancel': {
+      const control = fills.get(msg.target);
+      if (control) control.cancelled = true;
+      return !!control;
+    }
   }
 };
 

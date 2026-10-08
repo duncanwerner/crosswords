@@ -1,4 +1,5 @@
 import type { AnagramRequest } from './anagrams';
+import type { FillInput } from './fill';
 import type { RegexRequest } from './regex';
 import type { IndexOptions } from './word-index';
 
@@ -53,7 +54,23 @@ export type Request =
   | { id: number; type: 'load'; url: string; dictionary: Dictionary; options: IndexOptions }
   | ({ id: number; type: 'suggest' } & SuggestRequest & Blocking)
   | ({ id: number; type: 'anagrams' } & AnagramRequest & Blocking)
-  | ({ id: number; type: 'regex' } & RegexRequest & Blocking);
+  | ({ id: number; type: 'regex' } & RegexRequest & Blocking)
+  | ({ id: number; type: 'fill' } & FillRequest & Blocking)
+  | { id: number; type: 'cancel'; target: number };
+
+export interface FillRequest extends FillInput {
+  /** stop and return the best partial fill after this long */
+  timeMs: number;
+}
+
+export interface FillProgress {
+  /** lights filled in the best attempt so far */
+  filled: number;
+  total: number;
+  nodes: number;
+  restarts: number;
+  ms: number;
+}
 
 /** every query carries the puzzle's block list; the worker applies it to the index */
 export interface Blocking {
@@ -62,4 +79,5 @@ export interface Blocking {
 
 export type Response =
   | { id: number; ok: true; result: unknown }
-  | { id: number; ok: false; error: string };
+  | { id: number; ok: false; error: string }
+  | { id: number; progress: FillProgress };

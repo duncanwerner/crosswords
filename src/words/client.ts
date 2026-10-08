@@ -1,5 +1,6 @@
 import type { AnagramRequest, AnagramResult } from './anagrams';
-import type { Blocking, Dictionary, LoadResult, Request, Response, SuggestRequest, SuggestResult } from './protocol';
+import type { FillResult } from './fill';
+import type { Blocking, Dictionary, FillProgress, FillRequest, LoadResult, Request, Response, SuggestRequest, SuggestResult } from './protocol';
 import type { RegexRequest, RegexResult } from './regex';
 import type { IndexOptions } from './word-index';
 
@@ -14,7 +15,14 @@ type Body = Request extends infer R ? (R extends Request ? Omit<R, 'id'> : never
 let worker: Worker | undefined;
 let nextId = 0;
 let lastLoad: Body | undefined;
-const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void; timer?: ReturnType<typeof setTimeout> }>();
+interface Pending {
+  resolve: (v: unknown) => void;
+  reject: (e: Error) => void;
+  timer?: ReturnType<typeof setTimeout>;
+  progress?: (p: FillProgress) => void;
+}
+
+const pending = new Map<number, Pending>();
 
 const rejectAll = (error: Error) => {
   for (const entry of pending.values()) {
@@ -35,6 +43,10 @@ const start = () => {
   w.onmessage = (e: MessageEvent<Response>) => {
     const entry = pending.get(e.data.id);
     if (!entry) return;
+    if ('progress' in e.data) {
+      entry.progress?.(e.data.progress);
+      return;
+    }
     pending.delete(e.data.id);
     clearTimeout(entry.timer);
     if (e.data.ok) entry.resolve(e.data.result);
@@ -46,15 +58,13 @@ const start = () => {
   return w;
 };
 
-const call = <T>(body: Body, timeout?: number): Promise<T> => {
+const call = <T>(body: Body, timeout?: number, progress?: (p: FillProgress) => void, onId?: (id: number) => void): Promise<T> => {
   if (body.type === 'load') lastLoad = body;
   worker ??= start();
   const id = ++nextId;
+  onId?.(id);
   return new Promise<T>((resolve, reject) => {
-    const entry: { resolve: (v: unknown) => void; reject: (e: Error) => void; timer?: ReturnType<typeof setTimeout> } = {
-      resolve: resolve as (v: unknown) => void,
-      reject,
-    };
+    const entry: Pending = { resolve: resolve as (v: unknown) => void, reject, progress };
     if (timeout) {
       entry.timer = setTimeout(() => reset(new Error('That search took too long and was stopped.')), timeout);
     }
@@ -72,4 +82,15 @@ export const words = {
   suggest: (req: SuggestRequest & Blocking) => call<SuggestResult>({ type: 'suggest', ...req }, 10000),
   anagrams: (req: AnagramRequest & Blocking) => call<AnagramResult>({ type: 'anagrams', ...req }, 10000),
   regex: (req: RegexRequest & Blocking) => call<RegexResult>({ type: 'regex', ...req }, 4000),
+  /** start a fill; the worker stops itself at req.timeMs. cancel() ends it early with the best result so far */
+  fill: (req: FillRequest & Blocking, onProgress: (p: FillProgress) => void) => {
+    let id = 0;
+    const promise = call<FillResult>({ type: 'fill', ...req }, req.timeMs + 15000, onProgress, i => (id = i));
+    return {
+      promise,
+      cancel: () => {
+        if (id) void call<boolean>({ type: 'cancel', target: id }).catch(() => {});
+      },
+    };
+  },
 };

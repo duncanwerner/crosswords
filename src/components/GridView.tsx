@@ -48,7 +48,10 @@ export const GridView = () => {
 
   const highlight = createMemo(() => new Set(ed.currentLight()?.cells ?? []));
 
-  /** cell -> ghost letter from a hovered suggestion */
+  /** an auto-fill preview that will replace earlier auto letters hides them */
+  const hideAuto = () => !!ed.preview()?.replaceAuto;
+
+  /** cell -> ghost letter from a hovered suggestion or fill preview */
   const ghosts = createMemo(() => {
     const map = new Map<number, string>();
     const pv = ed.preview();
@@ -274,10 +277,10 @@ export const GridView = () => {
               <Show when={!p.cells[i].block && ed.map().numbers[i]}>
                 <text class={styles.number} x={x(i) + 2} y={y(i) + 9}>{ed.map().numbers[i]}</text>
               </Show>
-              <Show when={!p.cells[i].block && p.cells[i].letter}>
-                <text class={styles.letter} x={x(i) + S / 2} y={y(i) + S / 2 + 3}>{p.cells[i].letter}</text>
+              <Show when={!p.cells[i].block && p.cells[i].letter && !(p.cells[i].auto && hideAuto())}>
+                <text class={[styles.letter, { [styles.auto]: p.cells[i].auto }]} x={x(i) + S / 2} y={y(i) + S / 2 + 3}>{p.cells[i].letter}</text>
               </Show>
-              <Show when={!p.cells[i].block && !p.cells[i].letter && ghosts().get(i)}>
+              <Show when={!p.cells[i].block && (!p.cells[i].letter || (p.cells[i].auto && hideAuto())) && ghosts().get(i)}>
                 <text class={[styles.letter, styles.ghost]} x={x(i) + S / 2} y={y(i) + S / 2 + 3}>{ghosts().get(i)}</text>
               </Show>
             </g>

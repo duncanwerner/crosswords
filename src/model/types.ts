@@ -10,6 +10,8 @@ export interface Cell {
   barBottom: boolean;
   /** '' or a single uppercase letter */
   letter: string;
+  /** the letter was placed by the auto-fill (a re-fill may replace it) */
+  auto: boolean;
 }
 
 /** start row, start column and direction: stable across renumbering */
@@ -60,4 +62,4 @@ export interface CellPos {
 export const lightKey = (row: number, col: number, dir: Direction): LightKey =>
   `${row},${col},${dir === 'across' ? 'A' : 'D'}`;
 
-export const emptyCell = (): Cell => ({ block: false, barRight: false, barBottom: false, letter: '' });
+export const emptyCell = (): Cell => ({ block: false, barRight: false, barBottom: false, letter: '', auto: false });
