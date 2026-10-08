@@ -1,4 +1,4 @@
-import { For, Match, Show, Switch, createEffect, createMemo, createSignal, onSettled, useContext } from 'solid-js';
+import { For, Match, Show, Switch, createEffect, createMemo, createSignal, flush, onSettled, useContext } from 'solid-js';
 import { EditorContext } from '../../state/editor';
 import { DICTIONARIES, settings } from '../../state/words';
 import { words } from '../../words/client';
@@ -71,6 +71,37 @@ export const FillTool = (props: ToolProps) => {
     }
     return list;
   });
+
+  /**
+   * the selected word, and what committing it would do: take its letters
+   * from the previewed fill, and/or make its auto-fill letters yours
+   */
+  const selected = createMemo(() => {
+    const entry = ed.currentEntry();
+    if (!entry) return undefined;
+    const c = changes();
+    const d = done();
+    const preview = c && d && !stale() ? new Set(c.cells) : undefined;
+    const letters = entry.cells.map(i => (preview?.has(i) ? d!.result.letters[i] : '.')).join('');
+    const cells = ed.puzzle.cells;
+    const auto = entry.cells.some(i => cells[i].auto);
+    const fromPreview = /[A-Z]/.test(letters);
+    return { entry, letters, can: auto || fromPreview, label: `${entry.label} ${entry.lights[0].dir}` };
+  });
+
+  /** the fill agrees with the letters being committed, so its preview stays current */
+  const commitSelected = () => {
+    const s = selected();
+    if (!s?.can) return;
+    const d = done();
+    const keepPreview = !!d && !stale();
+    ed.commitLetters(s.entry.cells, s.letters);
+    if (keepPreview) {
+      flush();
+      setState({ ...d!, version: ed.gridVersion() });
+    }
+    ed.focusGrid();
+  };
 
   // show the result as ghost letters while it's current and this tab is open
   let previewing = false;
@@ -154,6 +185,20 @@ export const FillTool = (props: ToolProps) => {
           fallback={<button class="btn primary" onClick={start}>{done() ? 'Try another fill' : 'Fill grid'}</button>}
         >
           <button class="btn" onClick={() => { const s = state(); if (s.kind === 'running') s.cancel(); }}>Cancel</button>
+        </Show>
+        <Show when={selected()}>
+          {s => (
+            <button
+              class="btn"
+              disabled={!s().can || state().kind === 'running'}
+              title={s().can
+                ? `Make ${s().label} your own letters, so later fills keep it`
+                : `${s().label} has no auto-fill letters to commit`}
+              onClick={commitSelected}
+            >
+              Commit {s().label}
+            </button>
+          )}
         </Show>
         <label class={styles.label}>
           Time limit
@@ -257,7 +302,7 @@ export const FillTool = (props: ToolProps) => {
             <Match when={true}>
               <div class={styles.help}>
                 <p>The fill can use any word in the dictionary, so some will be obscure. The Standard dictionary gives more familiar words; block any you don't want and try another fill.</p>
-                <p>Auto-filled letters are shown in blue. Typing over one makes it yours.</p>
+                <p>Auto-filled letters are shown in blue. Typing over one makes it yours, and <strong>Commit</strong> makes the selected word yours, so later fills keep it. That works on a previewed fill too.</p>
               </div>
             </Match>
           </Switch>

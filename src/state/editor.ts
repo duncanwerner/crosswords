@@ -289,6 +289,21 @@ export const createEditor = (initial: Puzzle) => {
     });
   };
 
+  /**
+   * make letters yours, as if typed: auto-fill letters in these cells stop
+   * being auto, and empty cells take the given letters ('.' for none)
+   */
+  const commitLetters = (cells: readonly number[], letters = '') => {
+    commit(draft => {
+      cells.forEach((i, n) => {
+        const cell = draft.cells[i];
+        const next = letters[n] && letters[n] !== '.' ? letters[n] : '';
+        if (next && (!cell.letter || cell.auto)) cell.letter = next;
+        if (cell.letter) cell.auto = false;
+      });
+    });
+  };
+
   const clearAutoFill = () => {
     commit(draft => {
       for (const cell of draft.cells) {
@@ -338,7 +353,7 @@ export const createEditor = (initial: Puzzle) => {
     canUndo: () => historySize().undo > 0,
     canRedo: () => historySize().redo > 0,
     undo, redo,
-    toggleFeature, transform, setLetter, fillLight, clearLetters, applyFill, clearAutoFill, setClue, setLinks, setTitle, setSetter, setSymmetry,
+    toggleFeature, transform, setLetter, fillLight, clearLetters, applyFill, commitLetters, clearAutoFill, setClue, setLinks, setTitle, setSetter, setSymmetry,
     blocked, blockWords, unblockWord, clearBlocked,
     saveNow,
   };
