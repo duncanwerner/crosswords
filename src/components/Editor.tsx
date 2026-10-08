@@ -32,6 +32,56 @@ const isTextField = (el: EventTarget | null) =>
   !el.hasAttribute('data-grid-input') &&
   (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement || el.isContentEditable);
 
+/**
+ * drag a splitter handle: calls onDrag with the pointer's offset (px) from
+ * where the drag started, along the given axis, until release.
+ */
+const startDrag = (e: PointerEvent, axis: 'x' | 'y', onDrag: (delta: number) => void) => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const handle = e.currentTarget as HTMLElement;
+  handle.setPointerCapture(e.pointerId);
+  const start = axis === 'x' ? e.clientX : e.clientY;
+  const onMove = (m: PointerEvent) => onDrag((axis === 'x' ? m.clientX : m.clientY) - start);
+  const onUp = () => {
+    handle.removeEventListener('pointermove', onMove);
+    handle.removeEventListener('pointerup', onUp);
+    handle.removeEventListener('pointercancel', onUp);
+  };
+  handle.addEventListener('pointermove', onMove);
+  handle.addEventListener('pointerup', onUp);
+  handle.addEventListener('pointercancel', onUp);
+};
+
+/** a remembered number (a panel size), stored per browser */
+const storedNumber = (key: string, fallback: number) => {
+  let initial = fallback;
+  try {
+    const raw = Number(localStorage.getItem(key));
+    if (raw > 0) initial = raw;
+  }
+  catch {
+    // use the fallback
+  }
+  const [value, setValue] = createSignal(initial);
+  const set = (next: number) => {
+    setValue(next);
+    try {
+      localStorage.setItem(key, String(next));
+    }
+    catch {
+      // preference only
+    }
+  };
+  return [value, set] as const;
+};
+
+const PANEL_KEY = 'cross:panel-width';
+const PANEL_DEFAULT = 440;
+const MIN_PANEL = 320;
+/** room the grid column keeps when the panel is dragged wide */
+const MIN_GRID_COLUMN = 360;
+
 interface DockState {
   height: number;
   collapsed: boolean;
@@ -73,21 +123,26 @@ const EditorView = (props: { editor: ReturnType<typeof createEditor> }) => {
     Math.round(Math.max(MIN_DOCK, Math.min(height, right.clientHeight - MIN_CLUES)));
 
   const onSplitDown = (e: PointerEvent) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const handle = e.currentTarget as HTMLElement;
-    handle.setPointerCapture(e.pointerId);
-    const startY = e.clientY;
     const startHeight = dock().height;
-    const onMove = (m: PointerEvent) => setDock({ height: clampDock(startHeight - (m.clientY - startY)), collapsed: false });
-    const onUp = () => {
-      handle.removeEventListener('pointermove', onMove);
-      handle.removeEventListener('pointerup', onUp);
-      handle.removeEventListener('pointercancel', onUp);
-    };
-    handle.addEventListener('pointermove', onMove);
-    handle.addEventListener('pointerup', onUp);
-    handle.addEventListener('pointercancel', onUp);
+    startDrag(e, 'y', delta => setDock({ height: clampDock(startHeight - delta), collapsed: false }));
+  };
+
+  // grid on the left, clues and tools on the right, split by a draggable handle
+  const [panelWidth, setPanelWidth] = storedNumber(PANEL_KEY, PANEL_DEFAULT);
+  let main!: HTMLDivElement;
+  const clampPanel = (width: number) =>
+    Math.round(Math.max(MIN_PANEL, Math.min(width, main.clientWidth - MIN_GRID_COLUMN)));
+
+  const onPanelDown = (e: PointerEvent) => {
+    const startWidth = right.getBoundingClientRect().width;
+    startDrag(e, 'x', delta => setPanelWidth(clampPanel(startWidth - delta)));
+  };
+
+  const onPanelKey = (e: KeyboardEvent) => {
+    const delta = e.key === 'ArrowLeft' ? 24 : e.key === 'ArrowRight' ? -24 : 0;
+    if (!delta) return;
+    e.preventDefault();
+    setPanelWidth(clampPanel(right.getBoundingClientRect().width + delta));
   };
 
   const onSplitKey = (e: KeyboardEvent) => {
@@ -119,7 +174,7 @@ const EditorView = (props: { editor: ReturnType<typeof createEditor> }) => {
     <EditorContext value={ed}>
       <div class={styles.page}>
         <Toolbar />
-        <div class={styles.main}>
+        <div ref={main} class={styles.main} style={{ '--panel-width': `${panelWidth()}px` }}>
           <div class={styles.left}>
             <div class={styles.gridBox}>
               <GridView />
@@ -139,6 +194,17 @@ const EditorView = (props: { editor: ReturnType<typeof createEditor> }) => {
             </p>
             <StatsPanel />
           </div>
+          <div
+            class={styles.panelSplitter}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize side panel"
+            title="Drag to resize · double-click to reset"
+            tabindex={0}
+            onPointerDown={onPanelDown}
+            onKeyDown={onPanelKey}
+            onDblClick={() => setPanelWidth(PANEL_DEFAULT)}
+          />
           <div
             ref={right}
             class={[styles.right, { [styles.dockCollapsed]: dock().collapsed }]}

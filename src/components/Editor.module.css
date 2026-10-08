@@ -7,8 +7,9 @@
 
 .main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
-  gap: 24px;
+  /* the panel width is dragged by the user; the clamp keeps the grid column usable if the window shrinks */
+  grid-template-columns: minmax(0, 1fr) 16px clamp(320px, var(--panel-width, 440px), calc(100vw - 420px));
+  gap: 4px;
   min-height: 0;
   padding: 20px 24px;
 }
@@ -60,6 +61,25 @@
 .splitter:hover::after, .splitter:focus-visible::after { background: var(--accent); }
 .splitter:focus-visible { outline: none; }
 
+.panelSplitter {
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+}
+.panelSplitter::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 4px;
+  height: 40px;
+  margin-top: -20px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.panelSplitter:hover::after, .panelSplitter:focus-visible::after { background: var(--accent); }
+.panelSplitter:focus-visible { outline: none; }
+
 .missing { padding: 64px 16px; text-align: center; }
 
 @media (max-width: 900px) {
@@ -67,7 +87,7 @@
   .main { grid-template-columns: 1fr; padding: 12px 16px; }
   .left { overflow: visible; }
   .clues { max-height: 60dvh; }
-  .splitter { display: none; }
+  .splitter, .panelSplitter { display: none; }
   .dock { flex-basis: auto; margin-top: 8px; }
   .dock > section > div:last-child { max-height: 60dvh; }
   .gridBox { max-width: 640px; }

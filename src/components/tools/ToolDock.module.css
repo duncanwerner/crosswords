@@ -1,4 +1,5 @@
 .dock {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -9,17 +10,19 @@
 }
 
 .head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: 'tabs settings toggle';
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px 8px;
   padding: 6px 8px 6px 10px;
   border-bottom: 1px solid var(--border);
 }
 .collapsed .head { border-bottom: 0; }
 
-.tabs { display: flex; gap: 2px; flex: 1; }
+.tabs { grid-area: tabs; display: flex; flex-wrap: wrap; gap: 2px; }
 .tabs button {
+  white-space: nowrap;
   padding: 4px 10px;
   border: 0;
   border-radius: 999px;
@@ -31,10 +34,18 @@
 .tabs button:hover { color: var(--text); background: var(--surface-2); }
 .tabs button[aria-selected='true'] { background: var(--accent-soft); color: var(--text); }
 
-.settings { display: flex; align-items: center; gap: 8px; }
+.settings { grid-area: settings; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .settings select { height: 28px; padding: 0 4px; font-size: 12px; }
 .check { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); cursor: pointer; white-space: nowrap; }
-.toggle { width: 28px; height: 28px; padding: 0; justify-content: center; }
+.toggle { grid-area: toggle; align-self: start; width: 28px; height: 28px; padding: 0; justify-content: center; }
+
+/* narrow dock: settings drop to their own row, the toggle stays by the tabs */
+@container (max-width: 620px) {
+  .head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'tabs toggle' 'settings settings';
+  }
+}
 
 .body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .body[hidden] { display: none; }
