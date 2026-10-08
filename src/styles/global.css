@@ -26,8 +26,10 @@
   --cell-flagged: #f6c1bb;
   --cell-text: #1d1d1b;
   --bar: #1d1d1b;
-  --preview: #0b5aa2;
-  --auto-letter: #3d5f86;
+  /* grid letters: yours are --cell-text; applied auto-fill is blue; an
+     unapplied preview (fill result or hovered suggestion) is gray */
+  --preview: #8f8b82;
+  --auto-letter: #1767c2;
 
   --radius: 6px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 2px 8px rgb(0 0 0 / 0.05);

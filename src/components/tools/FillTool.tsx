@@ -362,7 +362,7 @@ export const FillTool = (props: ToolProps) => {
               <div class={styles.help}>
                 <p>The fill can use any word in the dictionary, so some will be obscure. The Standard dictionary gives more familiar words; block any you don't want and try another fill.</p>
                 <p>Required words must all go in, each in a light of its own, even if they aren't in the dictionary. If they can't, the fill stops and says why.</p>
-                <p>Auto-filled letters are shown in blue. Typing over one makes it yours, and <strong>Commit</strong> makes the selected word yours, so later fills keep it. That works on a previewed fill too.</p>
+                <p>A fill is previewed in gray; once applied, its letters are blue and yours are black. Typing over a blue letter makes it yours, and <strong>Commit</strong> makes the selected word yours, so later fills keep it. That works on a previewed fill too.</p>
               </div>
             </Match>
           </Switch>
