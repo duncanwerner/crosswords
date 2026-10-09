@@ -52,6 +52,12 @@ export interface FillResult {
 const A = 65;
 const EMPTY = 0;
 
+/**
+ * how far candidate order strays from best-first, in score bits: a word T
+ * bits behind another is e times less likely to be tried before it
+ */
+const TEMPERATURE = 1.5;
+
 /** small, seedable PRNG (mulberry32) */
 const random = (seed: number) => () => {
   seed |= 0;
@@ -227,13 +233,20 @@ export class Filler {
   protected pick(): { light: number; size: number } {
     let best = -1;
     let bestSize = Infinity;
+    let ties = 0;
     for (let li = 0; li < this.lights.length; li++) {
       if (this.assigned[li]) continue;
       const size = this.domainSize(li);
-      // ties broken by length (longer lights are harder to fit later), then randomly
-      if (size < bestSize || (size === bestSize && this.lights[li].length > this.lights[best].length)) {
+      // ties broken by length (longer lights are harder to fit later), then
+      // randomly: the k-th equal light replaces the best with chance 1/k
+      const length = this.lights[li].length;
+      const bestLength = best < 0 ? 0 : this.lights[best].length;
+      if (size < bestSize || (size === bestSize && length > bestLength)) {
         best = li;
         bestSize = size;
+        ties = 1;
+      } else if (size === bestSize && length === bestLength && this.rand() * ++ties < 1) {
+        best = li;
       }
       if (size === 0) break;
     }
@@ -263,8 +276,11 @@ export class Filler {
   }
 
   /**
-   * how well a word keeps its crossings open (sum of log2(options + 1)), with
-   * noise to vary the fill between runs; undefined if it leaves one with none
+   * how well a word keeps its crossings open (sum of log2(options + 1)), plus
+   * Gumbel noise; undefined if it leaves one with none. sorting by this
+   * samples without replacement with probability proportional to
+   * exp(score / TEMPERATURE), so the best word is likeliest to go first but
+   * near-best ones get a real chance, and the fill varies between runs.
    */
   protected score(word: string, checks: ReturnType<Filler['crossChecks']>) {
     let score = 0;
@@ -273,8 +289,7 @@ export class Filler {
       if (!n) return undefined;
       score += Math.log2(n + 1);
     }
-    // noise: enough to vary the fill between runs, not enough to bury good words
-    return score + this.rand() * 2.5;
+    return score - TEMPERATURE * Math.log(-Math.log(this.rand()));
   }
 
   /** candidates for a light, best first; ones that kill a crossing are dropped */

@@ -66,9 +66,10 @@ npm run build      # typecheck + production build
   catastrophically backtracking regex). Each query carries the puzzle's
   block list, which the index applies to its allowed set, so blocked words
   vanish from every helper (and from crossing counts) without per-tool code.
-- `src/words/fill.ts` – the auto-fill: most-constrained light first,
-  candidates ordered by crossing options (dead ends pruned), no repeats,
-  Luby restarts. Required words are placed first, as search steps that
+- `src/words/fill.ts` – the auto-fill: most-constrained light first (ties
+  broken at random), candidates drawn in random order weighted by crossing
+  options (Gumbel noise on the score, so near-best words get a real chance
+  and runs vary), dead ends pruned, no repeats, Luby restarts. Required words are placed first, as search steps that
   choose a light for a word. A step machine, so the worker runs it in slices and can
   report progress and honour cancel. Cells carry an `auto` flag so re-fills
   replace only auto-fill letters.
