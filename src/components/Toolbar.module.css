@@ -37,6 +37,32 @@
 .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
 .select { height: 32px; }
 
+.menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 4px;
+  min-width: 190px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  box-shadow: var(--shadow);
+}
+.menu:popover-open { display: flex; flex-direction: column; }
+.menu button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.menu button:hover:not(:disabled), .menu button:focus-visible { background: var(--surface-2); outline: none; }
+.menu button:disabled { opacity: 0.45; cursor: default; }
+
 @media (max-width: 900px) {
   .bar { padding: 8px 16px; }
   .sep { display: none; }

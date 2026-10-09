@@ -43,6 +43,11 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
   const stats = createMemo(() => computeStats(shape(), map(), puzzle.symmetry), { name: 'stats' });
   const filled = createMemo(() => puzzle.cells.reduce((n, c) => n + (c.letter ? 1 : 0), 0), { name: 'filled' });
   const autoFilled = createMemo(() => puzzle.cells.reduce((n, c) => n + (c.auto ? 1 : 0), 0), { name: 'autoFilled' });
+  /** whether any clue has text, an enumeration or links */
+  const hasClues = createMemo(
+    () => Object.values(puzzle.clues).some(c => c && (c.text || c.enumeration || c.links?.length)),
+    { name: 'hasClues' },
+  );
 
   const hasLetters = initial.cells.some(c => c.letter);
   const [mode, setModeSignal] = createSignal<Mode>(options.mode ?? (hasLetters ? 'fill' : 'design'));
@@ -271,14 +276,19 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
     });
   };
 
-  const clearLetters = () => {
+  /** clear letters, clues (text, enumerations and links), or both as one undo step */
+  const clear = (what: { letters?: boolean; clues?: boolean }) => {
     commit(draft => {
-      for (const cell of draft.cells) {
-        cell.letter = '';
-        cell.auto = false;
+      if (what.letters) {
+        for (const cell of draft.cells) {
+          cell.letter = '';
+          cell.auto = false;
+        }
       }
-    });
+      if (what.clues) draft.clues = {};
+    }, undefined, !!what.letters);
   };
+  const clearLetters = () => clear({ letters: true });
 
   /**
    * apply an auto-fill result ('.' for no letter). your own letters are
@@ -362,7 +372,7 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
   const setSymmetry = (symmetry: Symmetry) => commit(d => { d.symmetry = symmetry; }, undefined, false);
 
   return {
-    puzzle, map, stats, filled, autoFilled, gridVersion, mode, setMode, selection, select, selectLight, setSelection,
+    puzzle, map, stats, filled, autoFilled, hasClues, gridVersion, mode, setMode, selection, select, selectLight, setSelection,
     currentLight, entries, currentEntry, flagged, flaggedKind, setFlaggedKind,
     registerGridFocus, focusGrid: () => gridFocus(),
     registerShowTool, showTool: (id: string) => toolShow(id),
@@ -370,7 +380,7 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
     canUndo: () => historySize().undo > 0,
     canRedo: () => historySize().redo > 0,
     undo, redo,
-    toggleFeature, transform, setLetter, fillLight, clearLetters, applyFill, commitLetters, clearAutoFill, setClue, setLinks, setTitle, setSetter, setSymmetry,
+    toggleFeature, transform, setLetter, fillLight, clear, clearLetters, applyFill, commitLetters, clearAutoFill, setClue, setLinks, setTitle, setSetter, setSymmetry,
     blocked, blockWords, unblockWord, clearBlocked,
     required, requireWords, unrequireWord,
     saveNow,
