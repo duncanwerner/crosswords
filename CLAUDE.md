@@ -10,6 +10,8 @@ The README covers the features and code layout.
 - `npm test`: Vitest unit tests (pure model, words, storage)
 - `npm run build`: `tsc --noEmit` plus the production build. Run it before
   committing.
+- `npm run deploy`: build, then Direct Upload `dist/` to Cloudflare Pages
+  (project `cross`). Cloudflare never builds it. Only deploy when asked.
 - `node scripts/clean-wordlists.ts`: re-clean `public/wordlists/` after
   editing them
 

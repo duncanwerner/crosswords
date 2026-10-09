@@ -42,7 +42,27 @@ npm install
 npm run dev        # http://localhost:5173
 npm test           # model + storage unit tests
 npm run build      # typecheck + production build
+npm run deploy     # build, then upload dist/ to Cloudflare Pages
 ```
+
+## Deploy
+
+The site is fully static and hosted on Cloudflare Pages by Direct Upload:
+Cloudflare doesn't build it, it serves the `dist/` we upload.
+`npm run deploy` typechecks, builds and runs
+`wrangler pages deploy dist --project-name cross`.
+
+- First time: `npx wrangler login`. The first deploy offers to create the
+  `cross` project. A Direct Upload project can't be switched to Git builds
+  later.
+- Wrangler tags each deploy with the current git branch. Deploys from the
+  production branch (`main`) go live; other branches get preview URLs.
+- Routing is by hash (`#/p/<id>`), so the server only ever serves
+  `index.html` and needs no rewrite rules.
+- Puzzles (localStorage) and the clue log (IndexedDB) belong to one origin.
+  Nothing on `localhost` appears on the deployed site, and `*.pages.dev` and a
+  custom domain are separate origins too. Move data with the library's and
+  the clue log's export/import.
 
 ## Layout
 
