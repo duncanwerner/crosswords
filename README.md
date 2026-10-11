@@ -45,6 +45,9 @@ puzzles already in the library) or opens a single exported puzzle.
   Templates section. **New puzzle** on a template (or picking it in the New
   puzzle dialog) starts a puzzle with its grid: blocks, bars, size and
   symmetry, but no letters, clues or word lists.
+- **Backup**: **Back up library** saves every puzzle and template in one
+  JSON file; **Import…** restores it, skipping puzzles already in the
+  library. Play progress and the clue log aren't included.
 - Undo/redo for every edit; resizable panels; light and dark themes.
 
 ```sh
@@ -71,8 +74,8 @@ Cloudflare doesn't build it, it serves the `dist/` we upload.
   `index.html` and needs no rewrite rules.
 - Puzzles (localStorage) and the clue log (IndexedDB) belong to one origin.
   Nothing on `localhost` appears on the deployed site, and `*.pages.dev` and a
-  custom domain are separate origins too. Move data with the library's and
-  the clue log's export/import.
+  custom domain are separate origins too. Move data with **Back up library**
+  and **Import…**, and the clue log's own export/import.
 
 ## Layout
 
@@ -82,7 +85,7 @@ Cloudflare doesn't build it, it serves the `dist/` we upload.
   (`play.ts`). Unit tested.
 - `src/state/` – Solid state: `library.ts` (global puzzle index),
   `editor.ts` (one open puzzle: store, memos, undo/redo, autosave),
-  `storage.ts` (localStorage + schema migration), `route.ts` (hash routing),
+  `storage.ts` (localStorage, schema migration, library backup format), `route.ts` (hash routing),
   `clue-log.ts` (the clue log in IndexedDB, synced between tabs).
 - `src/components/` – UI. `GridView` is an SVG grid with a hidden input for
   keyboard capture. `Play` reuses the editor state on a copy of the
