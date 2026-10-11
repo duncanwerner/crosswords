@@ -1,5 +1,5 @@
-import { For, Show, createSignal } from 'solid-js';
-import { deletePuzzle, duplicatePuzzle, exportPuzzle, importPuzzle, library, loadPuzzle } from '../state/library';
+import { For, Show, createMemo, createSignal } from 'solid-js';
+import { deletePuzzle, duplicatePuzzle, exportPuzzle, importPuzzle, library, loadPuzzle, markTemplate, newFromTemplate } from '../state/library';
 import { openPuzzle, playPuzzle } from '../state/route';
 import styles from './Library.module.css';
 import { NewPuzzleDialog } from './NewPuzzleDialog';
@@ -17,6 +17,8 @@ export const Library = () => {
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal('');
   let fileInput!: HTMLInputElement;
+  const templates = createMemo(() => library.puzzles.filter(s => s.template));
+  const puzzles = createMemo(() => library.puzzles.filter(s => !s.template));
 
   const onImport = async () => {
     const file = fileInput.files?.[0];
@@ -34,6 +36,11 @@ export const Library = () => {
 
   const onDelete = (id: string, title: string) => {
     if (confirm(`Delete “${title}”? This can't be undone.`)) deletePuzzle(id);
+  };
+
+  const onNewFrom = (id: string) => {
+    const p = newFromTemplate(id);
+    if (p) openPuzzle(p.id);
   };
 
   const onExport = (id: string) => {
@@ -66,35 +73,67 @@ export const Library = () => {
           </div>
         }
       >
-        <div class={styles.grid}>
-          <For each={library.puzzles} keyed={s => s.id}>
-            {s => (
-              <article class={styles.card}>
-                <button class={styles.open} onClick={() => openPuzzle(s().id)}>
-                  <div class={styles.thumb}>
-                    <Thumbnail rows={s().rows} cols={s().cols} thumb={s().thumb} />
+        <Show when={templates().length}>
+          <h2 class={styles.section}>Templates</h2>
+          <div class={styles.grid}>
+            <For each={templates()} keyed={s => s.id}>
+              {s => (
+                <article class={[styles.card, styles.template]}>
+                  <button class={styles.open} onClick={() => openPuzzle(s().id)} title="Edit this template">
+                    <div class={styles.thumb}>
+                      <Thumbnail rows={s().rows} cols={s().cols} thumb={s().thumb} />
+                    </div>
+                    <h2 class={styles.title}>{s().title || 'Untitled'}</h2>
+                    <div class={styles.meta}>
+                      {s().rows}×{s().cols} · {s().style}
+                    </div>
+                  </button>
+                  <div class={styles.actions}>
+                    <button class="btn ghost" onClick={() => onNewFrom(s().id)} title="A new puzzle with this grid">New puzzle</button>
+                    <button class="btn ghost" onClick={() => markTemplate(s().id, false)} title="Move back to your puzzles">Unmark</button>
+                    <button class="btn ghost" onClick={() => onExport(s().id)}>Export</button>
+                    <button class="btn ghost danger" onClick={() => onDelete(s().id, s().title)}>Delete</button>
                   </div>
-                  <h2 class={styles.title}>{s().title || 'Untitled'}</h2>
-                  <span
-                    class={[styles.status, { [styles.complete]: s().complete }]}
-                    title={s().complete ? 'Every square filled and every answer clued' : 'Some squares or clues still to do'}
-                  >
-                    {s().complete ? '✓ Complete' : 'Unfinished'}
-                  </span>
-                  <div class={styles.meta}>
-                    {s().rows}×{s().cols} · {s().style} · {ago(s().updated)}
+                </article>
+              )}
+            </For>
+          </div>
+        </Show>
+        <Show when={templates().length}>
+          <h2 class={styles.section}>Puzzles</h2>
+        </Show>
+        <Show when={puzzles().length} fallback={<p class={styles.none}>No puzzles yet. Start one from a template, or with New puzzle.</p>}>
+          <div class={styles.grid}>
+            <For each={puzzles()} keyed={s => s.id}>
+              {s => (
+                <article class={styles.card}>
+                  <button class={styles.open} onClick={() => openPuzzle(s().id)}>
+                    <div class={styles.thumb}>
+                      <Thumbnail rows={s().rows} cols={s().cols} thumb={s().thumb} />
+                    </div>
+                    <h2 class={styles.title}>{s().title || 'Untitled'}</h2>
+                    <span
+                      class={[styles.status, { [styles.complete]: s().complete }]}
+                      title={s().complete ? 'Every square filled and every answer clued' : 'Some squares or clues still to do'}
+                    >
+                      {s().complete ? '✓ Complete' : 'Unfinished'}
+                    </span>
+                    <div class={styles.meta}>
+                      {s().rows}×{s().cols} · {s().style} · {ago(s().updated)}
+                    </div>
+                  </button>
+                  <div class={styles.actions}>
+                    <button class="btn ghost" onClick={() => playPuzzle(s().id)} title="Solve this puzzle">Play</button>
+                    <button class="btn ghost" onClick={() => duplicatePuzzle(s().id)}>Duplicate</button>
+                    <button class="btn ghost" onClick={() => markTemplate(s().id, true)} title="Keep this grid for starting new puzzles">Make template</button>
+                    <button class="btn ghost" onClick={() => onExport(s().id)}>Export</button>
+                    <button class="btn ghost danger" onClick={() => onDelete(s().id, s().title)}>Delete</button>
                   </div>
-                </button>
-                <div class={styles.actions}>
-                  <button class="btn ghost" onClick={() => playPuzzle(s().id)} title="Solve this puzzle">Play</button>
-                  <button class="btn ghost" onClick={() => duplicatePuzzle(s().id)}>Duplicate</button>
-                  <button class="btn ghost" onClick={() => onExport(s().id)}>Export</button>
-                  <button class="btn ghost danger" onClick={() => onDelete(s().id, s().title)}>Delete</button>
-                </div>
-              </article>
-            )}
-          </For>
-        </div>
+                </article>
+              )}
+            </For>
+          </div>
+        </Show>
       </Show>
 
       <Show when={creating()}>

@@ -60,6 +60,9 @@ export const Toolbar = () => {
           aria-label="Setter"
           onInput={e => ed.setSetter(e.currentTarget.value)}
         />
+        <Show when={ed.puzzle.template}>
+          <span class={styles.template} title="New puzzles made from this template copy its grid">Template</span>
+        </Show>
       </div>
 
       <div class={styles.segment} role="group" aria-label="Mode">

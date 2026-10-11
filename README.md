@@ -40,6 +40,10 @@ backups).
   you've solved it, if the setter's grid is complete.
 - The library marks each puzzle **Complete** (every square filled, every
   answer clued) or **Unfinished**.
+- **Templates**: **Make template** on a library card moves a puzzle to the
+  Templates section. **New puzzle** on a template (or picking it in the New
+  puzzle dialog) starts a puzzle with its grid: blocks, bars, size and
+  symmetry, but no letters, clues or word lists.
 - Undo/redo for every edit; resizable panels; light and dark themes.
 
 ```sh

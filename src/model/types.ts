@@ -50,6 +50,8 @@ export interface Puzzle {
   blocked: string[];
   /** words the auto-fill must include: uppercase A-Z, sorted */
   required: string[];
+  /** a grid kept for starting new puzzles from (see fromTemplate) */
+  template?: boolean;
 }
 
 export interface Light {

@@ -1,8 +1,8 @@
 import { createStore, snapshot } from 'solid-js';
-import { type NewPuzzleOptions, createPuzzle, isComplete, newId } from '../model/puzzle';
+import { type NewPuzzleOptions, createPuzzle, fromTemplate, newId } from '../model/puzzle';
 import { type PlayProgress } from '../model/play';
 import type { Puzzle } from '../model/types';
-import { type PuzzleSummary, createStorage, migrate, serialize, summarize } from './storage';
+import { type PuzzleSummary, SUMMARY_VERSION, createStorage, migrate, serialize, summarize } from './storage';
 
 /**
  * the puzzle library: a module-level (i.e. global) store of summaries,
@@ -11,15 +11,15 @@ import { type PuzzleSummary, createStorage, migrate, serialize, summarize } from
 
 export const storage = createStorage();
 
-/** summaries saved before `complete` was added get it from their puzzle */
+/** summaries saved by an older version are rebuilt from their puzzle */
 const loadIndex = () => {
   let stale = false;
   const list = storage.loadIndex().map(s => {
-    if (s.complete !== undefined) return s;
+    if (s.v === SUMMARY_VERSION) return s;
     const p = storage.loadPuzzle(s.id);
     if (!p) return s;
     stale = true;
-    return { ...s, complete: isComplete(p) };
+    return summarize(p);
   });
   if (stale) storage.saveIndex(list);
   return list;
@@ -69,6 +69,21 @@ export const duplicatePuzzle = (id: string) => {
   if (!p) return undefined;
   const now = Date.now();
   return add({ ...p, id: newId(), title: `${p.title} (copy)`, created: now, updated: now });
+};
+
+/** a new puzzle with the template's grid (blocks and bars only) */
+export const newFromTemplate = (id: string, title?: string) => {
+  const t = storage.loadPuzzle(id);
+  return t ? add(fromTemplate(t, title)) : undefined;
+};
+
+/** mark a puzzle as a template, or back to an ordinary puzzle */
+export const markTemplate = (id: string, template: boolean) => {
+  const p = storage.loadPuzzle(id);
+  if (!p) return;
+  if (template) p.template = true;
+  else delete p.template;
+  if (storage.savePuzzle(p)) updateIndex(list => list.map(s => (s.id === id ? summarize(p) : s)));
 };
 
 export const deletePuzzle = (id: string) => {

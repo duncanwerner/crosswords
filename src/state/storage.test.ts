@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createPuzzle } from '../model/puzzle';
-import { createStorage, migrate } from './storage';
+import { createStorage, migrate, summarize } from './storage';
 
 const memory = () => {
   const map = new Map<string, string>();
@@ -45,6 +45,19 @@ describe('storage', () => {
       '0,0,D': { text: '', enumeration: '', explanation: 'Hidden' },
       '2,0,A': { text: 'Other', enumeration: '' },
     });
+  });
+
+  it('keeps the template flag, and summarizes bars and templates', () => {
+    const p = createPuzzle({ rows: 3, cols: 3, style: 'barred', symmetry: 'none', template: 'empty' });
+    expect(migrate(p)!.template).toBeUndefined();
+    expect(migrate({ ...p, template: 'yes' })!.template).toBeUndefined();
+    p.template = true;
+    p.cells[0].barRight = true;
+    p.cells[1].barBottom = true;
+    p.cells[2].barRight = p.cells[2].barBottom = true;
+    p.cells[4].block = true;
+    expect(migrate(p)!.template).toBe(true);
+    expect(summarize(p)).toMatchObject({ template: true, complete: false, thumb: 'rb+.#....' });
   });
 
   it('repairs clue entries', () => {

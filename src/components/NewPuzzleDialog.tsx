@@ -1,9 +1,10 @@
-import { For, createSignal, onSettled } from 'solid-js';
+import { For, Show, createSignal, onSettled } from 'solid-js';
 import { MAX_SIZE, MIN_SIZE, type Template, clampSize } from '../model/puzzle';
 import type { GridStyle, Symmetry } from '../model/types';
-import { createNewPuzzle } from '../state/library';
+import { createNewPuzzle, library, newFromTemplate } from '../state/library';
 import { openPuzzle } from '../state/route';
 import styles from './NewPuzzleDialog.module.css';
+import { Thumbnail } from './Thumbnail';
 
 interface Choice<T> { value: T; label: string; hint: string }
 
@@ -95,6 +96,15 @@ export const NewPuzzleDialog = (props: { onClose: () => void }) => {
     openPuzzle(p.id);
   };
 
+  const templates = () => library.puzzles.filter(s => s.template);
+
+  const fromTemplate = (id: string) => {
+    const p = newFromTemplate(id, title().trim());
+    if (!p) return;
+    props.onClose();
+    openPuzzle(p.id);
+  };
+
   const radios = <T extends string>(name: string, legend: string, choices: Choice<T>[], value: () => T, set: (v: T) => void, disabled = () => false) => (
     <fieldset class={styles.choice}>
       <legend>{legend}</legend>
@@ -118,6 +128,22 @@ export const NewPuzzleDialog = (props: { onClose: () => void }) => {
           Title
           <input class="field" value={title()} placeholder="Untitled" onInput={e => setTitle(e.currentTarget.value)} />
         </label>
+        <Show when={templates().length}>
+          <fieldset class={styles.templates}>
+            <legend>From a template</legend>
+            <For each={templates()} keyed={s => s.id}>
+              {s => (
+                <button type="button" class={styles.template} onClick={() => fromTemplate(s().id)} title={`New puzzle with this grid (${s().rows}×${s().cols} ${s().style})`}>
+                  <span class={styles.templateThumb}>
+                    <Thumbnail rows={s().rows} cols={s().cols} thumb={s().thumb} />
+                  </span>
+                  <span>{s().title || 'Untitled'}</span>
+                </button>
+              )}
+            </For>
+          </fieldset>
+          <p class={styles.or}>or a new grid</p>
+        </Show>
         <div class={styles.size}>
           <label class={styles.label}>
             Rows

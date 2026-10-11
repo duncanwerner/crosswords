@@ -55,6 +55,30 @@ export const createPuzzle = (options: NewPuzzleOptions): Puzzle => {
 export const clampSize = (n: number) =>
   Math.max(MIN_SIZE, Math.min(MAX_SIZE, Math.round(Number.isFinite(n) ? n : 15)));
 
+/**
+ * a new puzzle from a template: the grid's blocks and bars, size, style
+ * and symmetry. letters, clues and word lists are left behind.
+ */
+export const fromTemplate = (t: Puzzle, title = ''): Puzzle => {
+  const now = Date.now();
+  return {
+    schema: SCHEMA_VERSION,
+    id: newId(),
+    title: title || 'Untitled',
+    setter: t.setter,
+    created: now,
+    updated: now,
+    rows: t.rows,
+    cols: t.cols,
+    style: t.style,
+    symmetry: t.symmetry,
+    cells: t.cells.map(c => ({ ...emptyCell(), block: c.block, barRight: c.barRight, barBottom: c.barBottom })),
+    clues: {},
+    blocked: [],
+    required: [],
+  };
+};
+
 /** drop clues whose light no longer exists (or which are empty), and links to missing lights */
 export const pruneClues = (puzzle: Pick<Puzzle, 'rows' | 'cols' | 'cells' | 'clues'>) => {
   const keys = new Set(computeLights(puzzle).lights.map(l => l.key));

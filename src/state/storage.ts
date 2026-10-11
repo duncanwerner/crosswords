@@ -17,11 +17,18 @@ export interface PuzzleSummary {
   cols: number;
   style: Puzzle['style'];
   updated: number;
-  /** compact grid for thumbnails: '#' block, '.' white; bars not shown */
+  /** compact grid for thumbnails: '#' block, '.' white, 'r'/'b'/'+' bar right/bottom/both */
   thumb: string;
-  /** every square filled and every answer clued (missing in indexes saved before this was added) */
-  complete?: boolean;
+  /** every square filled and every answer clued */
+  complete: boolean;
+  template: boolean;
+  /** summaries from an older version are rebuilt from their puzzle */
+  v: typeof SUMMARY_VERSION;
 }
+
+export const SUMMARY_VERSION = 2;
+
+const thumbCell = (c: Cell) => (c.block ? '#' : c.barRight && c.barBottom ? '+' : c.barRight ? 'r' : c.barBottom ? 'b' : '.');
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
@@ -44,8 +51,10 @@ export const summarize = (p: Puzzle): PuzzleSummary => ({
   cols: p.cols,
   style: p.style,
   updated: p.updated,
-  thumb: p.cells.map(c => (c.block ? '#' : '.')).join(''),
+  thumb: p.cells.map(thumbCell).join(''),
   complete: isComplete(p),
+  template: !!p.template,
+  v: SUMMARY_VERSION,
 });
 
 const KEY = /^\d+,\d+,[AD]$/;
@@ -101,6 +110,7 @@ export const migrate = (raw: unknown): Puzzle | undefined => {
     clues: migrateClues(src.clues),
     blocked: Array.isArray(src.blocked) ? normalizeBlocked(src.blocked.filter(w => typeof w === 'string')) : [],
     required: Array.isArray(src.required) ? normalizeBlocked(src.required.filter(w => typeof w === 'string')) : [],
+    ...(src.template === true ? { template: true } : {}),
   };
 };
 

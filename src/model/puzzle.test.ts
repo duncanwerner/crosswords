@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createPuzzle, isComplete } from './puzzle';
+import { createPuzzle, fromTemplate, isComplete } from './puzzle';
 import { computeLights } from './lights';
 
 const filled = () => {
@@ -33,5 +33,27 @@ describe('isComplete', () => {
     const p = createPuzzle({ rows: 3, cols: 3, style: 'blocked', symmetry: 'none', template: 'empty' });
     for (const c of p.cells) c.block = true;
     expect(isComplete(p)).toBe(false);
+  });
+});
+
+describe('fromTemplate', () => {
+  it('copies the grid only', () => {
+    const t = filled();
+    t.style = 'barred';
+    t.template = true;
+    t.title = 'Barred 3';
+    t.cells[0].barRight = true;
+    t.cells[3].barBottom = true;
+    t.cells[0].auto = true;
+    t.clues['0,0,A'] = { text: 'Clue', enumeration: '3', explanation: 'Why' };
+    t.blocked = ['ELS'];
+    t.required = ['CAT'];
+    const p = fromTemplate(t, 'Mine');
+    expect(p.id).not.toBe(t.id);
+    expect(p).toMatchObject({ title: 'Mine', rows: 3, cols: 3, style: 'barred', symmetry: t.symmetry, clues: {}, blocked: [], required: [] });
+    expect(p.template).toBeUndefined();
+    expect(p.cells.map(c => [c.block, c.barRight, c.barBottom])).toEqual(t.cells.map(c => [c.block, c.barRight, c.barBottom]));
+    expect(p.cells.every(c => !c.letter && !c.auto)).toBe(true);
+    expect(fromTemplate(t).title).toBe('Untitled');
   });
 });
