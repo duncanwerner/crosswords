@@ -32,8 +32,10 @@ puzzles already in the library) or opens a single exported puzzle.
     required words must all go in, or the fill stops and says why
   - Clue log: clues you've saved (**Save to log** on a filled, clued
     answer), searchable across every puzzle. A clue row says "Clued once
-    before" when the log already has that answer. Kept in IndexedDB, with
-    its own export/import (puzzle exports don't include it).
+    before" when the log already has that answer. **Show all** lists the
+    whole log; **Add clue** logs an idea for an answer that isn't in any
+    puzzle yet. Kept in IndexedDB, with its own export/import (puzzle
+    exports don't include it).
   - Blocked: a per-puzzle list of words never to offer
 - **Play mode**: solve a puzzle as a solver would (**Play** in the editor's
   toolbar or on a library card). An empty grid, read-only clues and no

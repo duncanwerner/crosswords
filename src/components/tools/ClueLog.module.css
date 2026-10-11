@@ -11,3 +11,9 @@
 
 .foot { display: flex; gap: 4px; align-items: center; padding: 4px 8px 4px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
 .spacer { flex: 1; }
+
+.add { display: grid; gap: 6px; padding: 8px 16px 10px; border-top: 1px solid var(--border); background: var(--surface-2); }
+.addRow { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.addRow > span:first-child { width: 4.5em; flex: none; }
+.addRow :global(.field) { height: 30px; }
+.addButtons { display: flex; justify-content: flex-end; gap: 8px; }

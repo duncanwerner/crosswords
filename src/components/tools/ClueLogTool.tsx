@@ -1,6 +1,7 @@
-import { For, Match, Show, Switch, createMemo, createSignal, useContext } from 'solid-js';
+import { For, Match, Show, Switch, createMemo, createSignal, flush, useContext } from 'solid-js';
 import { type ClueRecord, searchLog } from '../../model/clue-log';
-import { clueLog, clueLogStatus, deleteClue, exportClueLog, importClueLog, loadClueLog } from '../../state/clue-log';
+import { fromAnswer } from '../../model/enumeration';
+import { clueLog, clueLogStatus, deleteClue, exportClueLog, importClueLog, loadClueLog, saveClue } from '../../state/clue-log';
 import { EditorContext } from '../../state/editor';
 import { CopyStatus, type ToolProps, createCopier } from './common';
 import styles from './ClueLog.module.css';
@@ -12,13 +13,21 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: '
  * the clue log: clues saved from any puzzle, by answer. with nothing typed
  * it shows what you've written for the selected answer (or answers that
  * fit its letters so far); typing searches answers and clue text.
+ * Show all lists the whole log, and Add clue logs an answer that isn't in
+ * any puzzle yet.
  */
 export const ClueLogTool = (_props: ToolProps) => {
   const ed = useContext(EditorContext);
   const { copied, copy } = createCopier();
   const [query, setQuery] = createSignal('');
   const [message, setMessage] = createSignal('');
+  /** the whole log, even with an answer selected */
+  const [all, setAll] = createSignal(false);
+  const [adding, setAdding] = createSignal(false);
+  const [answer, setAnswer] = createSignal('');
+  const [clue, setClue] = createSignal('');
   let fileInput!: HTMLInputElement;
+  let answerInput!: HTMLInputElement;
 
   /** the selected answer: its letters so far, as a pattern */
   const current = createMemo(() => {
@@ -33,7 +42,7 @@ export const ClueLogTool = (_props: ToolProps) => {
     const list = clueLog().list;
     if (q) return searchLog(list, q);
     const c = current();
-    if (!c) return list;
+    if (!c || all()) return list;
     if (c.complete) return clueLog().byWord.get(c.pattern) ?? [];
     // an empty light would match every answer of its length: not useful
     return /[A-Z]/.test(c.pattern) ? searchLog(list, c.pattern) : [];
@@ -42,7 +51,7 @@ export const ClueLogTool = (_props: ToolProps) => {
   const heading = () => {
     if (query().trim()) return `${results().length} matching`;
     const c = current();
-    if (!c) return `All ${clueLog().list.length} saved clues`;
+    if (!c || all()) return `All ${clueLog().list.length} saved clues`;
     if (c.complete) return `Your clues for ${c.pattern} (${c.label})`;
     return /[A-Z]/.test(c.pattern) ? `Answers fitting ${c.pattern.replace(/\./g, '·')} (${c.label})` : `${c.label} has no letters yet`;
   };
@@ -59,6 +68,37 @@ export const ClueLogTool = (_props: ToolProps) => {
   const remove = (r: ClueRecord) => {
     if (!confirm(`Delete this clue for ${r.word} from the log?\n\n${r.clue}`)) return;
     deleteClue(r.id).catch((err: Error) => setMessage(err.message));
+  };
+
+  /** the answer being added, split into letters and enumeration */
+  const parsed = createMemo(() => fromAnswer(answer()));
+
+  const openAdd = () => {
+    // a plain word or phrase in the search box is probably the answer to add
+    const q = query().trim();
+    setAnswer(/^[\p{L}' -]+$/u.test(q) ? q : '');
+    setClue('');
+    setMessage('');
+    setAdding(true);
+    flush();
+    answerInput.focus();
+  };
+
+  const add = async (e: SubmitEvent) => {
+    e.preventDefault();
+    const { letters, enumeration } = parsed();
+    const text = clue().trim();
+    if (!letters || !text) return;
+    try {
+      await saveClue({ word: letters, enumeration, clue: text, puzzleId: '', puzzleTitle: '', light: '' });
+      setAdding(false);
+      setQuery('');
+      setAll(true);
+      setMessage(`Added a clue for ${letters}${enumeration ? ` (${enumeration})` : ''}.`);
+    }
+    catch (err) {
+      setMessage((err as Error).message);
+    }
   };
 
   const onImport = async (file: File | undefined) => {
@@ -84,12 +124,45 @@ export const ClueLogTool = (_props: ToolProps) => {
           onInput={e => setQuery(e.currentTarget.value)}
         />
         <Show when={query()}>
-          <button class={shared.link} onClick={() => setQuery('')}>
+          <button class={shared.link} onClick={() => { setQuery(''); setAll(false); }}>
             {current() ? 'Show selected answer' : 'Clear'}
           </button>
         </Show>
       </div>
-      <div class={shared.info}><span>{heading()}</span></div>
+      <div class={shared.info}>
+        <span>{heading()}</span>
+        <Show when={!query().trim() && current() && clueLog().list.length}>
+          <button class={shared.link} onClick={() => setAll(!all())}>
+            {all() ? 'Show selected answer' : 'Show all'}
+          </button>
+        </Show>
+      </div>
+
+      <Show when={adding()}>
+        <form class={styles.add} onSubmit={add} onKeyDown={e => e.key === 'Escape' && setAdding(false)}>
+          <label class={styles.addRow}>
+            <span>Answer</span>
+            <input
+              ref={answerInput}
+              class={['field', shared.mono, shared.upper, shared.grow]}
+              placeholder="e.g. sea shell"
+              value={answer()}
+              onInput={e => setAnswer(e.currentTarget.value)}
+            />
+            <span class={styles.enum}>
+              {parsed().letters ? `${parsed().letters.length} letters${parsed().enumeration ? ` (${parsed().enumeration})` : ''}` : ''}
+            </span>
+          </label>
+          <label class={styles.addRow}>
+            <span>Clue</span>
+            <input class={['field', shared.grow]} placeholder="The clue, with or without its enumeration" value={clue()} onInput={e => setClue(e.currentTarget.value)} />
+          </label>
+          <div class={styles.addButtons}>
+            <button type="button" class="btn ghost" onClick={() => setAdding(false)}>Cancel</button>
+            <button type="submit" class="btn primary" disabled={!parsed().letters || !clue().trim()}>Add to log</button>
+          </div>
+        </form>
+      </Show>
 
       <Switch>
         <Match when={clueLogStatus().state === 'error'}>
@@ -104,7 +177,7 @@ export const ClueLogTool = (_props: ToolProps) => {
         <Match when={!clueLog().list.length}>
           <div class={shared.message}>
             <p>No saved clues yet.</p>
-            <p>Fill an answer, write its clue, then use <strong>Save to log</strong> on the clue.</p>
+            <p>Fill an answer, write its clue, then use <strong>Save to log</strong> on the clue, or use <strong>Add clue</strong> below for an answer that isn't in a puzzle.</p>
           </div>
         </Match>
         <Match when={!results().length}>
@@ -121,8 +194,8 @@ export const ClueLogTool = (_props: ToolProps) => {
                     <span class={styles.word}>{r().word}</span>
                     <Show when={r().enumeration}><span class={styles.enum}>({r().enumeration})</span></Show>
                     <span class={styles.source}>
-                      {r().puzzleTitle || 'Imported'}
-                      <Show when={r().puzzleId === ed.puzzle.id}> (this puzzle)</Show>
+                      {r().puzzleId ? r().puzzleTitle || 'Imported' : 'Added by hand'}
+                      <Show when={r().puzzleId && r().puzzleId === ed.puzzle.id}> (this puzzle)</Show>
                       {' · '}{dateFormat.format(r().saved)}
                     </span>
                   </div>
@@ -146,6 +219,7 @@ export const ClueLogTool = (_props: ToolProps) => {
       <div class={styles.foot}>
         <span>{clueLog().list.length} saved · kept in this browser</span>
         <span class={styles.spacer} />
+        <button class="btn ghost" disabled={adding() || clueLogStatus().state !== 'ready'} onClick={openAdd}>Add clue</button>
         <button class="btn ghost" disabled={!clueLog().list.length} onClick={exportClueLog}>Export</button>
         <button class="btn ghost" onClick={() => fileInput.click()}>Import</button>
         <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={e => onImport(e.currentTarget.files?.[0])} />
