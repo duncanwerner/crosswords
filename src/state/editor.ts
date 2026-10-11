@@ -6,7 +6,7 @@ import { type WarningKind, computeStats } from '../model/stats';
 import { type Entry, type LinkMap, computeEntries } from '../model/links';
 import { type Feature, symmetricPartner } from '../model/symmetry';
 import { type Transform, transformGrid } from '../model/transform';
-import type { ClueEntry, Direction, Light, LightKey, Puzzle, Symmetry } from '../model/types';
+import type { ClueEntry, ClueStatus, Direction, Light, LightKey, Puzzle, Symmetry } from '../model/types';
 import { savePuzzle } from './library';
 
 export type Mode = 'design' | 'fill';
@@ -343,6 +343,14 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
     }, `clue:${key}:${Object.keys(patch).join()}`, false);
   };
 
+  /** the setter's mark on a clue (undefined clears it) */
+  const setStatus = (key: LightKey, status?: ClueStatus) => {
+    commit(draft => {
+      const { status: _, ...entry } = draft.clues[key] ?? { text: '', enumeration: '' };
+      draft.clues[key] = status ? { ...entry, status } : entry;
+    }, `clue:${key}:status`, false);
+  };
+
   /** link a head light to the lights its answer continues into ([] unlinks) */
   const setLinks = (key: LightKey, keys: LightKey[]) => {
     commit(draft => {
@@ -385,7 +393,7 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
     canUndo: () => historySize().undo > 0,
     canRedo: () => historySize().redo > 0,
     undo, redo,
-    toggleFeature, transform, setLetter, fillLight, clear, clearLetters, applyFill, commitLetters, clearAutoFill, setClue, setLinks, setTitle, setSetter, setSymmetry,
+    toggleFeature, transform, setLetter, fillLight, clear, clearLetters, applyFill, commitLetters, clearAutoFill, setClue, setStatus, setLinks, setTitle, setSetter, setSymmetry,
     blocked, blockWords, unblockWord, clearBlocked,
     required, requireWords, unrequireWord,
     saveNow,

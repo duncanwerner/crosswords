@@ -28,7 +28,13 @@ export interface ClueEntry {
   links?: LightKey[];
   /** how the clue works, shown to a solver once the puzzle is solved. optional: doesn't count towards finishing */
   explanation?: string;
+  /** the setter's own mark on how the clue is going. never shown to solvers */
+  status?: ClueStatus;
 }
+
+/** red, yellow and green: needs work, not sure yet, done */
+export type ClueStatus = 'rework' | 'unsure' | 'good';
+export const CLUE_STATUSES: readonly ClueStatus[] = ['rework', 'unsure', 'good'];
 
 export const SCHEMA_VERSION = 1;
 

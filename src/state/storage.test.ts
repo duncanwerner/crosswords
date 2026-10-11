@@ -47,6 +47,18 @@ describe('storage', () => {
     });
   });
 
+  it('keeps clue marks, dropping unknown ones', () => {
+    const store = createStorage(memory());
+    const p = createPuzzle({ rows: 5, cols: 5, style: 'blocked', symmetry: 'rotational', template: 'lattice' });
+    p.clues['0,0,A'] = { text: 'Clue', enumeration: '', status: 'rework' };
+    p.clues['0,0,D'] = { text: 'Other', enumeration: '', status: 'meh' as never };
+    store.savePuzzle(p);
+    expect(store.loadPuzzle(p.id)!.clues).toEqual({
+      '0,0,A': { text: 'Clue', enumeration: '', status: 'rework' },
+      '0,0,D': { text: 'Other', enumeration: '' },
+    });
+  });
+
   it('keeps the template flag, and summarizes bars and templates', () => {
     const p = createPuzzle({ rows: 3, cols: 3, style: 'barred', symmetry: 'none', template: 'empty' });
     expect(migrate(p)!.template).toBeUndefined();

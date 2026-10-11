@@ -2,10 +2,18 @@ import { For, Show, createEffect, createMemo, createSignal, flush, useContext } 
 import { format, fromAnswer, parse, validate } from '../model/enumeration';
 import { checkLinks, formatRef, parseLinks } from '../model/links';
 import { nextLight } from '../model/navigation';
-import type { Direction, Light, LightKey } from '../model/types';
+import { CLUE_STATUSES, type ClueStatus, type Direction, type Light, type LightKey } from '../model/types';
 import { clueLog, saveClue, savedFrom } from '../state/clue-log';
 import { EditorContext } from '../state/editor';
 import styles from './CluePanel.module.css';
+
+const STATUS_LABEL: Record<ClueStatus, string> = { rework: 'Needs work', unsure: 'Not sure', good: 'Good' };
+
+/** the next mark in the cycle: none, red, yellow, green, none (or backwards) */
+const cycleStatus = (status: ClueStatus | undefined, step: 1 | -1): ClueStatus | undefined => {
+  const order = [undefined, ...CLUE_STATUSES];
+  return order[(order.indexOf(status) + step + order.length) % order.length];
+};
 
 const focusClue = (light: Pick<Light, 'key'> | undefined) => {
   if (!light) return;
@@ -16,6 +24,15 @@ export const CluePanel = () => {
   const ed = useContext(EditorContext);
   const lights = (dir: Direction) => ed.map().lights.filter(l => l.dir === dir);
   const written = createMemo(() => ed.entries().list.filter(e => ed.puzzle.clues[e.key]?.text.trim()).length);
+  /** how many clues carry each mark */
+  const marked = createMemo(() => {
+    const counts: Record<ClueStatus, number> = { rework: 0, unsure: 0, good: 0 };
+    for (const e of ed.entries().list) {
+      const status = ed.puzzle.clues[e.key]?.status;
+      if (status) counts[status]++;
+    }
+    return CLUE_STATUSES.filter(s => counts[s]).map(s => ({ status: s, count: counts[s] }));
+  });
 
   // keep the active clue visible as the grid selection moves
   createEffect(
@@ -29,7 +46,17 @@ export const CluePanel = () => {
     <section class={styles.panel} aria-label="Clues">
       <div class={styles.head}>
         <h2>Clues</h2>
-        <span class={styles.progress}>{written()} of {ed.entries().list.length} written</span>
+        <span class={styles.progress}>
+          <For each={marked()}>
+            {m => (
+              <span class={styles.tally} title={STATUS_LABEL[m.status]}>
+                <span class={[styles.dot, styles[m.status]]} aria-hidden="true" />
+                <span class={styles.srOnly}>{STATUS_LABEL[m.status]}:</span> {m.count}
+              </span>
+            )}
+          </For>
+          {written()} of {ed.entries().list.length} written
+        </span>
       </div>
       <div class={styles.scroll}>
         <For each={['across', 'down'] as const}>
@@ -84,6 +111,11 @@ const ClueRow = (props: { light: Light }) => {
   const linked = () => answer().lights.length > 1;
   const length = () => answer().cells.length;
   const entry = () => ed.puzzle.clues[props.light.key];
+  const status = () => entry()?.status;
+  const nextLabel = () => {
+    const next = cycleStatus(status(), 1);
+    return next ? STATUS_LABEL[next].toLowerCase() : 'no mark';
+  };
   const active = () => ed.currentLight()?.key === props.light.key;
   const letters = () => answer().cells.map(i => ed.puzzle.cells[i].letter);
   const pattern = () => answer().lights.map(l => l.cells.map(i => ed.puzzle.cells[i].letter || '·').join('')).join('/');
@@ -208,7 +240,17 @@ const ClueRow = (props: { light: Light }) => {
       data-clue={props.light.key}
       onFocusIn={activate}
     >
-      <span class={styles.number}>{answer().label}</span>
+      <div class={styles.numberCol}>
+        <button
+          class={[styles.status, { [styles.marked]: !!status() }]}
+          title={`${status() ? STATUS_LABEL[status()!] : 'No mark'}. Click for ${nextLabel()}; Shift-click goes back. Only you see this.`}
+          aria-label={`${props.light.number} ${props.light.dir} mark: ${status() ? STATUS_LABEL[status()!] : 'none'}`}
+          onClick={e => ed.setStatus(props.light.key, cycleStatus(status(), e.shiftKey ? -1 : 1))}
+        >
+          <span class={[styles.dot, status() && styles[status()!]]} />
+        </button>
+        <span class={styles.number}>{answer().label}</span>
+      </div>
       <textarea
         class={styles.text}
         rows={1}

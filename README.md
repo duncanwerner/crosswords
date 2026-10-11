@@ -18,6 +18,10 @@ puzzle, template and logged clue as one JSON file; **Import…** restores it
 - **Explanations**: **Explain…** on a clue adds an optional note on how it
   works. Play mode shows it once the puzzle is solved. It doesn't count
   towards finishing a puzzle.
+- **Clue marks**: the dot beside a clue's number cycles through red (needs
+  work), yellow (not sure) and green (good); Shift-click goes back. The clue
+  list's header counts each colour. Marks are for the setter only: Play mode
+  doesn't show them.
 - **Linked clues**: link a light to the lights its answer continues into
   (type "5" or "12d" in the clue's Linked field) for clues like `1/5`. The
   first light holds the clue and one enumeration for the whole answer; the

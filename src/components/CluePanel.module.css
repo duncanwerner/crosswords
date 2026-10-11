@@ -37,7 +37,7 @@
 
 .row {
   display: grid;
-  grid-template-columns: minmax(28px, max-content) 1fr auto;
+  grid-template-columns: minmax(44px, max-content) 1fr auto;
   gap: 2px 8px;
   padding: 6px 16px 6px 12px;
   border-left: 4px solid transparent;
@@ -168,3 +168,43 @@
   cursor: pointer;
 }
 .earlier:hover { text-decoration: underline; }
+
+/* the setter's red/yellow/green mark on a clue */
+.numberCol { display: flex; justify-content: flex-end; align-items: flex-start; gap: 2px; }
+.status {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+}
+.row:hover .status, .row.active .status, .status:focus-visible, .status.marked { opacity: 1; }
+.status:hover { background: var(--accent-soft); }
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.dot.rework { border-color: var(--danger); background: var(--danger); }
+/* --warn is brown in the light theme; a fixed amber reads as yellow in both */
+.dot.unsure { border-color: #e2ad1d; background: #e2ad1d; }
+.dot.good { border-color: var(--ok); background: var(--ok); }
+.progress { display: flex; gap: 10px; align-items: center; }
+.tally { display: inline-flex; gap: 4px; align-items: center; font-variant-numeric: tabular-nums; }
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
