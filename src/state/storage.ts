@@ -115,7 +115,24 @@ export const migrate = (raw: unknown): Puzzle | undefined => {
 };
 
 /** the stored form: orphaned and empty clues are dropped */
-export const serialize = (p: Puzzle) => JSON.stringify({ ...p, clues: pruneClues(p) });
+const stored = (p: Puzzle) => ({ ...p, clues: pruneClues(p) });
+
+export const serialize = (p: Puzzle) => JSON.stringify(stored(p));
+
+const BACKUP_KIND = 'cross-library';
+
+/** a whole-library backup: every puzzle in its stored form */
+export const serializeLibrary = (puzzles: Puzzle[], exported = Date.now()) =>
+  JSON.stringify({ kind: BACKUP_KIND, version: 1, exported, puzzles: puzzles.map(stored) });
+
+/** the puzzles in a library backup, or undefined if `raw` isn't one. entries that can't be read are counted. */
+export const parseBackup = (raw: unknown): { puzzles: Puzzle[]; unreadable: number } | undefined => {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const src = raw as { kind?: unknown; puzzles?: unknown };
+  if (src.kind !== BACKUP_KIND || !Array.isArray(src.puzzles)) return undefined;
+  const puzzles = src.puzzles.map(migrate).filter(p => p !== undefined);
+  return { puzzles, unreadable: src.puzzles.length - puzzles.length };
+};
 
 export const createStorage = (storage: StorageLike | undefined = defaultStorage()) => {
   const read = (key: string): unknown => {

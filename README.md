@@ -2,8 +2,9 @@
 
 A cryptic crossword editor: design blocked or barred grids, fill them by hand
 or automatically, and write clues with enumerations. Built on SolidJS 2.0 (RC)
-+ Vite; data is kept in localStorage (export/import JSON from the library for
-backups).
++ Vite; data is kept in localStorage. **Back up library** downloads every
+puzzle and template as one JSON file; **Import…** restores it (skipping
+puzzles already in the library) or opens a single exported puzzle.
 
 ## Features
 

@@ -1,9 +1,20 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
-import { deletePuzzle, duplicatePuzzle, exportPuzzle, importPuzzle, library, loadPuzzle, markTemplate, newFromTemplate } from '../state/library';
+import { type ImportResult, deletePuzzle, duplicatePuzzle, exportLibrary, exportPuzzle, importFile, library, loadPuzzle, markTemplate, newFromTemplate } from '../state/library';
 import { openPuzzle, playPuzzle } from '../state/route';
 import styles from './Library.module.css';
 import { NewPuzzleDialog } from './NewPuzzleDialog';
 import { Thumbnail } from './Thumbnail';
+
+const plural = (n: number, word: string, words = `${word}s`) => `${n} ${n === 1 ? word : words}`;
+
+/** what a library restore did, in a sentence */
+const restored = (r: Extract<ImportResult, { kind: 'library' }>) => {
+  const parts = [r.added || !r.existing ? `Restored ${plural(r.added, 'puzzle')}.` : 'Nothing new to restore:'];
+  if (r.existing) parts.push(`${plural(r.existing, 'puzzle')} already in your library ${r.existing === 1 ? 'was' : 'were'} left as is.`);
+  if (r.unreadable) parts.push(`${plural(r.unreadable, 'entry', 'entries')} couldn't be read.`);
+  if (r.failed) parts.push(`${plural(r.failed, 'puzzle')} didn't fit in browser storage.`);
+  return parts.join(' ');
+};
 
 const ago = (time: number) => {
   const s = Math.round((Date.now() - time) / 1000);
@@ -16,6 +27,7 @@ const ago = (time: number) => {
 export const Library = () => {
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal('');
+  const [notice, setNotice] = createSignal('');
   let fileInput!: HTMLInputElement;
   const templates = createMemo(() => library.puzzles.filter(s => s.template));
   const puzzles = createMemo(() => library.puzzles.filter(s => !s.template));
@@ -26,8 +38,10 @@ export const Library = () => {
     if (!file) return;
     try {
       setError('');
-      const p = await importPuzzle(file);
-      openPuzzle(p.id);
+      setNotice('');
+      const result = await importFile(file);
+      if (result.kind === 'puzzle') openPuzzle(result.puzzle.id);
+      else setNotice(restored(result));
     }
     catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -55,13 +69,19 @@ export const Library = () => {
           Cross
           <small>Cryptic crossword editor</small>
         </h1>
-        <button class="btn" onClick={() => fileInput.click()}>Import…</button>
+        <Show when={library.puzzles.length}>
+          <button class="btn" onClick={exportLibrary} title="Download every puzzle and template in one file">Back up library</button>
+        </Show>
+        <button class="btn" onClick={() => fileInput.click()} title="Open a puzzle file, or restore a library backup">Import…</button>
         <button class="btn primary" onClick={() => setCreating(true)}>New puzzle</button>
         <input ref={fileInput} type="file" accept="application/json,.json" class="visually-hidden" onChange={onImport} />
       </header>
 
       <Show when={error()}>
         <p class={styles.error} role="alert">{error()}</p>
+      </Show>
+      <Show when={notice()}>
+        <p class={styles.notice} role="status">{notice()}</p>
       </Show>
 
       <Show

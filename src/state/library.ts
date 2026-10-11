@@ -2,7 +2,7 @@ import { createStore, snapshot } from 'solid-js';
 import { type NewPuzzleOptions, createPuzzle, fromTemplate, newId } from '../model/puzzle';
 import { type PlayProgress } from '../model/play';
 import type { Puzzle } from '../model/types';
-import { type PuzzleSummary, SUMMARY_VERSION, createStorage, migrate, serialize, summarize } from './storage';
+import { type PuzzleSummary, SUMMARY_VERSION, createStorage, migrate, parseBackup, serialize, serializeLibrary, summarize } from './storage';
 
 /**
  * the puzzle library: a module-level (i.e. global) store of summaries,
@@ -91,27 +91,59 @@ export const deletePuzzle = (id: string) => {
   updateIndex(list => list.filter(s => s.id !== id));
 };
 
-export const exportPuzzle = (p: Puzzle) => {
-  const blob = new Blob([serialize(p)], { type: 'application/json' });
+const download = (json: string, name: string) => {
+  const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${(p.title || 'puzzle').replace(/[^\w\- ]+/g, '').trim() || 'puzzle'}.json`;
+  a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-/** import from a file. a clashing id gets a fresh one, so nothing is overwritten. */
-export const importPuzzle = async (file: File): Promise<Puzzle> => {
+export const exportPuzzle = (p: Puzzle) =>
+  download(serialize(p), `${(p.title || 'puzzle').replace(/[^\w\- ]+/g, '').trim() || 'puzzle'}.json`);
+
+/** every puzzle and template in one file, for backup */
+export const exportLibrary = () => {
+  const puzzles = library.puzzles.map(s => storage.loadPuzzle(s.id)).filter(p => p !== undefined);
+  download(serializeLibrary(puzzles), `cross-library-${new Date().toISOString().slice(0, 10)}.json`);
+};
+
+export type ImportResult =
+  | { kind: 'puzzle'; puzzle: Puzzle }
+  /** puzzles already in the library (by id) are skipped; `failed` couldn't be saved (storage full) */
+  | { kind: 'library'; added: number; existing: number; unreadable: number; failed: number };
+
+/**
+ * import a puzzle or a library backup. a single puzzle with a clashing id
+ * gets a fresh one; a backup skips puzzles already here. nothing is overwritten.
+ */
+export const importFile = async (file: File): Promise<ImportResult> => {
   let raw: unknown;
   try {
     raw = JSON.parse(await file.text());
   } catch {
     throw new Error('That file is not valid JSON.');
   }
+  const backup = parseBackup(raw);
+  if (backup) return restore(backup.puzzles, backup.unreadable);
   const p = migrate(raw);
-  if (!p) throw new Error('That file is not a puzzle this app can read.');
+  if (!p) throw new Error('That file is not a puzzle or library backup this app can read.');
   if (library.puzzles.some(s => s.id === p.id)) p.id = newId();
   p.updated = Date.now();
-  return add(p);
+  return { kind: 'puzzle', puzzle: add(p) };
+};
+
+/** puzzles keep their own dates, so the library order matches the backup's */
+const restore = (puzzles: Puzzle[], unreadable: number): ImportResult => {
+  const have = new Set(library.puzzles.map(s => s.id));
+  const fresh = puzzles.filter(p => {
+    if (have.has(p.id)) return false;
+    have.add(p.id);
+    return true;
+  });
+  const saved = fresh.filter(p => storage.savePuzzle(p));
+  if (saved.length) updateIndex(list => [...saved.map(summarize), ...list]);
+  return { kind: 'library', added: saved.length, existing: puzzles.length - fresh.length, unreadable, failed: fresh.length - saved.length };
 };

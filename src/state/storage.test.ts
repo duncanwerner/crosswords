@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createPuzzle } from '../model/puzzle';
-import { createStorage, migrate, summarize } from './storage';
+import { createStorage, migrate, parseBackup, serializeLibrary, summarize } from './storage';
 
 const memory = () => {
   const map = new Map<string, string>();
@@ -58,6 +58,25 @@ describe('storage', () => {
     p.cells[4].block = true;
     expect(migrate(p)!.template).toBe(true);
     expect(summarize(p)).toMatchObject({ template: true, complete: false, thumb: 'rb+.#....' });
+  });
+
+  it('round-trips a library backup, counting unreadable entries', () => {
+    const a = createPuzzle({ rows: 5, cols: 5, style: 'blocked', symmetry: 'rotational', template: 'lattice' });
+    const b = createPuzzle({ rows: 3, cols: 3, style: 'barred', symmetry: 'none', template: 'empty' });
+    a.clues['0,0,A'] = { text: 'Clue', enumeration: '5' };
+    a.clues['1,1,A'] = { text: 'Orphan', enumeration: '' };
+    b.template = true;
+    const back = parseBackup(JSON.parse(serializeLibrary([a, b])))!;
+    expect(back.unreadable).toBe(0);
+    expect(back.puzzles.map(p => p.id)).toEqual([a.id, b.id]);
+    expect(back.puzzles[0].clues).toEqual({ '0,0,A': { text: 'Clue', enumeration: '5' } });
+    expect(back.puzzles[1].template).toBe(true);
+
+    const raw = JSON.parse(serializeLibrary([a]));
+    raw.puzzles.push({ junk: true }, 7);
+    expect(parseBackup(raw)).toMatchObject({ puzzles: [{ id: a.id }], unreadable: 2 });
+    expect(parseBackup(a)).toBeUndefined();
+    expect(parseBackup({ kind: 'cross-library' })).toBeUndefined();
   });
 
   it('repairs clue entries', () => {
