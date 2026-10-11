@@ -9,8 +9,10 @@ const plural = (n: number, word: string, words = `${word}s`) => `${n} ${n === 1 
 
 /** what a library restore did, in a sentence */
 const restored = (r: Extract<ImportResult, { kind: 'library' }>) => {
-  const parts = [r.added || !r.existing ? `Restored ${plural(r.added, 'puzzle')}.` : 'Nothing new to restore:'];
+  const nothing = !r.added && !r.clues && r.existing;
+  const parts = [nothing ? 'Nothing new to restore:' : `Restored ${plural(r.added, 'puzzle')} and ${plural(r.clues, 'logged clue')}.`];
   if (r.existing) parts.push(`${plural(r.existing, 'puzzle')} already in your library ${r.existing === 1 ? 'was' : 'were'} left as is.`);
+  if (r.clueError) parts.push(`The clue log couldn't be restored: ${r.clueError}`);
   if (r.unreadable) parts.push(`${plural(r.unreadable, 'entry', 'entries')} couldn't be read.`);
   if (r.failed) parts.push(`${plural(r.failed, 'puzzle')} didn't fit in browser storage.`);
   return parts.join(' ');
@@ -48,6 +50,12 @@ export const Library = () => {
     }
   };
 
+  const onBackup = async () => {
+    setError('');
+    setNotice('');
+    setError(await exportLibrary());
+  };
+
   const onDelete = (id: string, title: string) => {
     if (confirm(`Delete “${title}”? This can't be undone.`)) deletePuzzle(id);
   };
@@ -70,7 +78,7 @@ export const Library = () => {
           <small>Cryptic crossword editor</small>
         </h1>
         <Show when={library.puzzles.length}>
-          <button class="btn" onClick={exportLibrary} title="Download every puzzle and template in one file">Back up library</button>
+          <button class="btn" onClick={onBackup} title="Download every puzzle, template and logged clue in one file">Back up library</button>
         </Show>
         <button class="btn" onClick={() => fileInput.click()} title="Open a puzzle file, or restore a library backup">Import…</button>
         <button class="btn primary" onClick={() => setCreating(true)}>New puzzle</button>

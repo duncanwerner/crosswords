@@ -50,6 +50,7 @@ describe('fromTemplate', () => {
     t.required = ['CAT'];
     const p = fromTemplate(t, 'Mine');
     expect(p.id).not.toBe(t.id);
+    expect(p.revision).toBe(1);
     expect(p).toMatchObject({ title: 'Mine', rows: 3, cols: 3, style: 'barred', symmetry: t.symmetry, clues: {}, blocked: [], required: [] });
     expect(p.template).toBeUndefined();
     expect(p.cells.map(c => [c.block, c.barRight, c.barBottom])).toEqual(t.cells.map(c => [c.block, c.barRight, c.barBottom]));

@@ -31,6 +31,13 @@ The README covers the features and code layout.
   undo history, schedules the autosave, and bumps `gridVersion`; pass
   `touchesGrid = false` for edits that don't change cells. Don't call
   `setPuzzle` elsewhere.
+- **Plan for a back-end.** One day everything will be synced as a single
+  blob (e.g. an S3 object). The library backup (`Backup` in
+  `src/state/storage.ts`) is that blob: new kinds of saved data go in it,
+  and a format change bumps `BACKUP_VERSION`. Puzzles carry a `revision`
+  that the editor's autosave bumps once per save; it is for ordering copies
+  when merging, since device clocks can't be trusted. Restores keep it;
+  copies with a new id start at 1.
 - **ASCII only.** Grid letters and dictionary matching are uppercase A–Z.
   Every input path (typing, answers, imports, word lists) goes through
   `toAscii`/`toLetters` in `src/model/ascii.ts`.

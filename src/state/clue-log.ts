@@ -126,6 +126,33 @@ export const exportClueLog = () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
+/** the whole log, loading it first if need be. throws if it can't be read. */
+export const allClues = async () => {
+  await loadClueLog();
+  const s = status();
+  if (s.state === 'error') throw new Error(s.message);
+  return log().list;
+};
+
+/** add records whose id isn't in the log yet; returns how many were new */
+export const mergeClues = async (records: ClueRecord[]) => {
+  await allClues();
+  const known = new Set(log().list.map(r => r.id));
+  const fresh = records.filter(r => {
+    if (known.has(r.id)) return false;
+    known.add(r.id);
+    return true;
+  });
+  if (fresh.length) {
+    await transact('readwrite', s => {
+      for (const r of fresh) s.put(r);
+    });
+    setLog(index([...fresh, ...log().list]));
+    announce();
+  }
+  return fresh.length;
+};
+
 /** merge records from an exported file; returns how many were new */
 export const importClueLog = async (file: File) => {
   let raw: unknown;
@@ -137,14 +164,5 @@ export const importClueLog = async (file: File) => {
   }
   const list = (raw as { records?: unknown })?.records;
   if (!Array.isArray(list)) throw new Error("That file isn't a clue log export.");
-  const known = new Set(log().list.map(r => r.id));
-  const fresh = list.map(toRecord).filter((r): r is ClueRecord => !!r && !known.has(r.id));
-  if (fresh.length) {
-    await transact('readwrite', s => {
-      for (const r of fresh) s.put(r);
-    });
-    setLog(index([...fresh, ...log().list]));
-    announce();
-  }
-  return fresh.length;
+  return mergeClues(list.map(toRecord).filter((r): r is ClueRecord => !!r));
 };

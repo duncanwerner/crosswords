@@ -65,18 +65,39 @@ describe('storage', () => {
     const b = createPuzzle({ rows: 3, cols: 3, style: 'barred', symmetry: 'none', template: 'empty' });
     a.clues['0,0,A'] = { text: 'Clue', enumeration: '5' };
     a.clues['1,1,A'] = { text: 'Orphan', enumeration: '' };
+    a.revision = 7;
     b.template = true;
-    const back = parseBackup(JSON.parse(serializeLibrary([a, b])))!;
+    const clue = { id: 'c1', word: 'SEASHELL', enumeration: '3,5', clue: 'Beach find', puzzleId: '', puzzleTitle: '', light: '' as const, saved: 5 };
+    const back = parseBackup(JSON.parse(serializeLibrary({ puzzles: [a, b], clues: [clue] })))!;
     expect(back.unreadable).toBe(0);
     expect(back.puzzles.map(p => p.id)).toEqual([a.id, b.id]);
     expect(back.puzzles[0].clues).toEqual({ '0,0,A': { text: 'Clue', enumeration: '5' } });
+    expect(back.puzzles[0].revision).toBe(7);
     expect(back.puzzles[1].template).toBe(true);
+    expect(back.clues).toEqual([clue]);
 
-    const raw = JSON.parse(serializeLibrary([a]));
+    const raw = JSON.parse(serializeLibrary({ puzzles: [a], clues: [clue] }));
     raw.puzzles.push({ junk: true }, 7);
-    expect(parseBackup(raw)).toMatchObject({ puzzles: [{ id: a.id }], unreadable: 2 });
+    raw.clueLog.push({ id: 'c2', word: '', clue: 'No answer' });
+    expect(parseBackup(raw)).toMatchObject({ puzzles: [{ id: a.id }], clues: [{ id: 'c1' }], unreadable: 3 });
     expect(parseBackup(a)).toBeUndefined();
     expect(parseBackup({ kind: 'cross-library' })).toBeUndefined();
+  });
+
+  it('reads version 1 backups, and refuses newer versions', () => {
+    const a = createPuzzle({ rows: 3, cols: 3, style: 'blocked', symmetry: 'none', template: 'empty' });
+    expect(parseBackup({ kind: 'cross-library', version: 1, puzzles: [a] })).toMatchObject({ puzzles: [{ id: a.id }], clues: [], unreadable: 0 });
+    expect(() => parseBackup({ kind: 'cross-library', version: 99, puzzles: [] })).toThrow(/newer version/);
+  });
+
+  it('keeps a puzzle revision, and treats a missing or bad one as 0', () => {
+    const p = createPuzzle({ rows: 3, cols: 3, style: 'blocked', symmetry: 'none', template: 'empty' });
+    expect(p.revision).toBe(1);
+    expect(migrate({ ...p, revision: 12 })!.revision).toBe(12);
+    expect(migrate({ ...p, revision: undefined })!.revision).toBe(0);
+    expect(migrate({ ...p, revision: -3 })!.revision).toBe(0);
+    expect(migrate({ ...p, revision: 2.5 })!.revision).toBe(0);
+    expect(summarize(p).revision).toBe(1);
   });
 
   it('repairs clue entries', () => {

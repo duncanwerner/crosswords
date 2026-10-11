@@ -1,4 +1,5 @@
 import { toLetters } from '../model/ascii';
+import { type ClueRecord, toRecord } from '../model/clue-log';
 import { type PlayProgress, parseProgress } from '../model/play';
 import { isComplete, normalizeBlocked, pruneClues } from '../model/puzzle';
 import { type Cell, type ClueEntry, type LightKey, type Puzzle, SCHEMA_VERSION, emptyCell } from '../model/types';
@@ -17,6 +18,7 @@ export interface PuzzleSummary {
   cols: number;
   style: Puzzle['style'];
   updated: number;
+  revision: number;
   /** compact grid for thumbnails: '#' block, '.' white, 'r'/'b'/'+' bar right/bottom/both */
   thumb: string;
   /** every square filled and every answer clued */
@@ -26,7 +28,7 @@ export interface PuzzleSummary {
   v: typeof SUMMARY_VERSION;
 }
 
-export const SUMMARY_VERSION = 2;
+export const SUMMARY_VERSION = 3;
 
 const thumbCell = (c: Cell) => (c.block ? '#' : c.barRight && c.barBottom ? '+' : c.barRight ? 'r' : c.barBottom ? 'b' : '.');
 
@@ -51,6 +53,7 @@ export const summarize = (p: Puzzle): PuzzleSummary => ({
   cols: p.cols,
   style: p.style,
   updated: p.updated,
+  revision: p.revision,
   thumb: p.cells.map(thumbCell).join(''),
   complete: isComplete(p),
   template: !!p.template,
@@ -103,6 +106,7 @@ export const migrate = (raw: unknown): Puzzle | undefined => {
     setter: typeof src.setter === 'string' ? src.setter : '',
     created: Number(src.created) || now,
     updated: Number(src.updated) || now,
+    revision: Number.isSafeInteger(src.revision) && src.revision! > 0 ? src.revision! : 0,
     rows, cols,
     style: src.style === 'barred' ? 'barred' : 'blocked',
     symmetry: src.symmetry === 'none' ? 'none' : 'rotational',
@@ -121,17 +125,34 @@ export const serialize = (p: Puzzle) => JSON.stringify(stored(p));
 
 const BACKUP_KIND = 'cross-library';
 
-/** a whole-library backup: every puzzle in its stored form */
-export const serializeLibrary = (puzzles: Puzzle[], exported = Date.now()) =>
-  JSON.stringify({ kind: BACKUP_KIND, version: 1, exported, puzzles: puzzles.map(stored) });
+/** v1: puzzles only. v2: adds the clue log. */
+export const BACKUP_VERSION = 2;
 
-/** the puzzles in a library backup, or undefined if `raw` isn't one. entries that can't be read are counted. */
-export const parseBackup = (raw: unknown): { puzzles: Puzzle[]; unreadable: number } | undefined => {
+/**
+ * everything the app keeps, as one document: the library backup file now,
+ * and the unit a future back-end would store. play progress isn't included.
+ */
+export interface Backup {
+  puzzles: Puzzle[];
+  clues: ClueRecord[];
+}
+
+export const serializeLibrary = ({ puzzles, clues }: Backup, exported = Date.now()) =>
+  JSON.stringify({ kind: BACKUP_KIND, version: BACKUP_VERSION, exported, puzzles: puzzles.map(stored), clueLog: clues });
+
+/**
+ * the contents of a library backup, or undefined if `raw` isn't one.
+ * entries that can't be read are counted; a backup from a newer version throws.
+ */
+export const parseBackup = (raw: unknown): (Backup & { unreadable: number }) | undefined => {
   if (!raw || typeof raw !== 'object') return undefined;
-  const src = raw as { kind?: unknown; puzzles?: unknown };
+  const src = raw as { kind?: unknown; version?: unknown; puzzles?: unknown; clueLog?: unknown };
   if (src.kind !== BACKUP_KIND || !Array.isArray(src.puzzles)) return undefined;
+  if (Number(src.version) > BACKUP_VERSION) throw new Error('That backup was made by a newer version of Cross; reload the app to update it.');
+  const rawClues = Array.isArray(src.clueLog) ? src.clueLog : [];
   const puzzles = src.puzzles.map(migrate).filter(p => p !== undefined);
-  return { puzzles, unreadable: src.puzzles.length - puzzles.length };
+  const clues = rawClues.map(toRecord).filter(r => r !== undefined);
+  return { puzzles, clues, unreadable: src.puzzles.length - puzzles.length + rawClues.length - clues.length };
 };
 
 export const createStorage = (storage: StorageLike | undefined = defaultStorage()) => {

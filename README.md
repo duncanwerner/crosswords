@@ -2,9 +2,9 @@
 
 A cryptic crossword editor: design blocked or barred grids, fill them by hand
 or automatically, and write clues with enumerations. Built on SolidJS 2.0 (RC)
-+ Vite; data is kept in localStorage. **Back up library** downloads every
-puzzle and template as one JSON file; **Import…** restores it (skipping
-puzzles already in the library) or opens a single exported puzzle.
++ Vite; data is kept in the browser. **Back up library** downloads every
+puzzle, template and logged clue as one JSON file; **Import…** restores it
+(skipping anything already there) or opens a single exported puzzle.
 
 ## Features
 
@@ -34,8 +34,8 @@ puzzles already in the library) or opens a single exported puzzle.
     answer), searchable across every puzzle. A clue row says "Clued once
     before" when the log already has that answer. **Show all** lists the
     whole log; **Add clue** logs an idea for an answer that isn't in any
-    puzzle yet. Kept in IndexedDB, with its own export/import (puzzle
-    exports don't include it).
+    puzzle yet. Kept in IndexedDB and included in **Back up library**; it
+    also has its own export/import (single-puzzle exports don't include it).
   - Blocked: a per-puzzle list of words never to offer
 - **Play mode**: solve a puzzle as a solver would (**Play** in the editor's
   toolbar or on a library card). An empty grid, read-only clues and no
@@ -47,9 +47,9 @@ puzzles already in the library) or opens a single exported puzzle.
   Templates section. **New puzzle** on a template (or picking it in the New
   puzzle dialog) starts a puzzle with its grid: blocks, bars, size and
   symmetry, but no letters, clues or word lists.
-- **Backup**: **Back up library** saves every puzzle and template in one
-  JSON file; **Import…** restores it, skipping puzzles already in the
-  library. Play progress and the clue log aren't included.
+- **Backup**: **Back up library** saves every puzzle, template and logged
+  clue in one JSON file; **Import…** restores it, skipping puzzles and clues
+  already there. Play progress isn't included.
 - Undo/redo for every edit; resizable panels; light and dark themes.
 
 ```sh
@@ -77,7 +77,7 @@ Cloudflare doesn't build it, it serves the `dist/` we upload.
 - Puzzles (localStorage) and the clue log (IndexedDB) belong to one origin.
   Nothing on `localhost` appears on the deployed site, and `*.pages.dev` and a
   custom domain are separate origins too. Move data with **Back up library**
-  and **Import…**, and the clue log's own export/import.
+  and **Import…**.
 
 ## Layout
 

@@ -39,6 +39,14 @@ export interface Puzzle {
   setter: string;
   created: number;
   updated: number;
+  /**
+   * counts saves: +1 each time the editor persists a change (autosave
+   * batches a burst of edits into one). unlike `updated` it doesn't depend
+   * on a device's clock, so copies of a puzzle can be ordered when merging.
+   * a new puzzle (or a copy with a new id) starts at 1; 0 means saved
+   * before revisions existed.
+   */
+  revision: number;
   rows: number;
   cols: number;
   style: GridStyle;

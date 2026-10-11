@@ -155,7 +155,8 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
     lastGroup = undefined;
     syncHistory();
     setGridVersion(v => v + 1);
-    setPuzzle(() => ({ ...prev, updated: Date.now() }));
+    // the revision counts saves, so undo doesn't wind it back
+    setPuzzle(() => ({ ...prev, revision: puzzle.revision, updated: Date.now() }));
     scheduleSave();
   };
 
@@ -173,6 +174,10 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
     clearTimeout(timer);
     if (!dirty) return;
     dirty = false;
+    // each save is one revision. not through commit(): no undo step, no further save
+    setPuzzle(draft => {
+      draft.revision++;
+    });
     flush();
     (options.save ?? savePuzzle)(snapshot(puzzle) as Puzzle);
   };
