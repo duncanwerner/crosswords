@@ -26,6 +26,8 @@ export interface ClueEntry {
    * the first light, whose clue and enumeration cover the whole answer.
    */
   links?: LightKey[];
+  /** how the clue works, shown to a solver once the puzzle is solved. optional: doesn't count towards finishing */
+  explanation?: string;
 }
 
 export const SCHEMA_VERSION = 1;

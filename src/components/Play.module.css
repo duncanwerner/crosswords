@@ -96,6 +96,7 @@
 .row.done:not(.active) { color: var(--muted); }
 .number { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .enum { color: var(--muted); white-space: nowrap; }
+.explanation { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; white-space: pre-wrap; }
 .see { color: var(--muted); font-style: italic; }
 
 @media (max-width: 900px) {

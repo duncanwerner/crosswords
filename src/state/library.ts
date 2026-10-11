@@ -1,5 +1,5 @@
 import { createStore, snapshot } from 'solid-js';
-import { type NewPuzzleOptions, createPuzzle, newId } from '../model/puzzle';
+import { type NewPuzzleOptions, createPuzzle, isComplete, newId } from '../model/puzzle';
 import { type PlayProgress } from '../model/play';
 import type { Puzzle } from '../model/types';
 import { type PuzzleSummary, createStorage, migrate, serialize, summarize } from './storage';
@@ -11,7 +11,21 @@ import { type PuzzleSummary, createStorage, migrate, serialize, summarize } from
 
 export const storage = createStorage();
 
-const [library, setLibrary] = createStore({ puzzles: storage.loadIndex() });
+/** summaries saved before `complete` was added get it from their puzzle */
+const loadIndex = () => {
+  let stale = false;
+  const list = storage.loadIndex().map(s => {
+    if (s.complete !== undefined) return s;
+    const p = storage.loadPuzzle(s.id);
+    if (!p) return s;
+    stale = true;
+    return { ...s, complete: isComplete(p) };
+  });
+  if (stale) storage.saveIndex(list);
+  return list;
+};
+
+const [library, setLibrary] = createStore({ puzzles: loadIndex() });
 
 export { library };
 

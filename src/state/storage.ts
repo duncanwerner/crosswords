@@ -1,6 +1,6 @@
 import { toLetters } from '../model/ascii';
 import { type PlayProgress, parseProgress } from '../model/play';
-import { normalizeBlocked, pruneClues } from '../model/puzzle';
+import { isComplete, normalizeBlocked, pruneClues } from '../model/puzzle';
 import { type Cell, type ClueEntry, type LightKey, type Puzzle, SCHEMA_VERSION, emptyCell } from '../model/types';
 
 /**
@@ -19,6 +19,8 @@ export interface PuzzleSummary {
   updated: number;
   /** compact grid for thumbnails: '#' block, '.' white; bars not shown */
   thumb: string;
+  /** every square filled and every answer clued (missing in indexes saved before this was added) */
+  complete?: boolean;
 }
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -43,6 +45,7 @@ export const summarize = (p: Puzzle): PuzzleSummary => ({
   style: p.style,
   updated: p.updated,
   thumb: p.cells.map(c => (c.block ? '#' : '.')).join(''),
+  complete: isComplete(p),
 });
 
 const KEY = /^\d+,\d+,[AD]$/;
@@ -60,6 +63,7 @@ const migrateClues = (raw: unknown): Puzzle['clues'] => {
     };
     const links = Array.isArray(v.links) ? v.links.filter(k => typeof k === 'string' && KEY.test(k)) : [];
     if (links.length) entry.links = links;
+    if (typeof v.explanation === 'string' && v.explanation.trim()) entry.explanation = v.explanation;
     clues[key as LightKey] = entry;
   }
   return clues;

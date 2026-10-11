@@ -1,5 +1,6 @@
 import { toLetters } from './ascii';
 import { computeLights } from './lights';
+import { type LinkMap, computeEntries } from './links';
 import { type Cell, type ClueEntry, type GridStyle, type LightKey, type Puzzle, type Symmetry, SCHEMA_VERSION, emptyCell } from './types';
 
 export type Template = 'empty' | 'lattice';
@@ -61,9 +62,10 @@ export const pruneClues = (puzzle: Pick<Puzzle, 'rows' | 'cols' | 'cells' | 'clu
   for (const [key, entry] of Object.entries(puzzle.clues) as Array<[LightKey, ClueEntry | undefined]>) {
     if (!entry || !keys.has(key)) continue;
     const links = entry.links?.filter(k => keys.has(k) && k !== key);
-    const { links: _, ...rest } = entry;
+    const { links: _, explanation, ...rest } = entry;
     const next: ClueEntry = links?.length ? { ...rest, links } : rest;
-    if (next.text || next.enumeration || next.links) clues[key] = next;
+    if (explanation?.trim()) next.explanation = explanation;
+    if (next.text || next.enumeration || next.links || next.explanation) clues[key] = next;
   }
   return clues;
 };
@@ -74,3 +76,19 @@ export const normalizeBlocked = (words: readonly string[]) =>
 
 /** split typed text ("els, ens nit") into words */
 export const parseWordList = (text: string) => normalizeBlocked(text.split(/[\s,;]+/));
+
+/**
+ * finished: every white square has a letter and every answer has a clue.
+ * explanations are optional and don't count.
+ */
+export const isComplete = (puzzle: Pick<Puzzle, 'rows' | 'cols' | 'cells' | 'clues'>) => {
+  if (puzzle.cells.some(c => !c.block && !c.letter)) return false;
+  const map = computeLights(puzzle);
+  if (!map.lights.length) return false;
+  const links: LinkMap = {};
+  for (const light of map.lights) {
+    const keys = puzzle.clues[light.key]?.links;
+    if (keys?.length) links[light.key] = keys;
+  }
+  return computeEntries(map, links).list.every(e => puzzle.clues[e.key]?.text.trim());
+};

@@ -95,6 +95,23 @@
 .answer::placeholder { text-transform: none; color: var(--muted); opacity: 0; }
 .row:hover .answer::placeholder, .row.active .answer::placeholder, .answer:focus::placeholder { opacity: 1; }
 .answer:focus { outline: none; border-color: var(--focus); background: var(--surface); }
+.explanation {
+  grid-column: 2 / 4;
+  width: 100%;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  resize: none;
+  field-sizing: content;
+}
+.explanation::placeholder { color: var(--muted); font-style: italic; }
+.explanation:hover { border-color: var(--border); }
+.explanation:focus { outline: none; border-color: var(--focus); background: var(--surface); color: var(--text); }
 .error { grid-column: 2 / 4; padding-left: 6px; color: var(--danger); font-size: 12px; }
 
 /* linked clues */

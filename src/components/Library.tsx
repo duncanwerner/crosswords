@@ -75,6 +75,12 @@ export const Library = () => {
                     <Thumbnail rows={s().rows} cols={s().cols} thumb={s().thumb} />
                   </div>
                   <h2 class={styles.title}>{s().title || 'Untitled'}</h2>
+                  <span
+                    class={[styles.status, { [styles.complete]: s().complete }]}
+                    title={s().complete ? 'Every square filled and every answer clued' : 'Some squares or clues still to do'}
+                  >
+                    {s().complete ? '✓ Complete' : 'Unfinished'}
+                  </span>
                   <div class={styles.meta}>
                     {s().rows}×{s().cols} · {s().style} · {ago(s().updated)}
                   </div>

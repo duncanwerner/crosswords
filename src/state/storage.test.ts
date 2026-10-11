@@ -33,6 +33,20 @@ describe('storage', () => {
     expect(store.loadPuzzle(p.id)!.clues).toEqual({ '0,0,A': { text: '', enumeration: '', links: ['2,0,A'] } });
   });
 
+  it('keeps explanations, and entries that only hold one', () => {
+    const store = createStorage(memory());
+    const p = createPuzzle({ rows: 5, cols: 5, style: 'blocked', symmetry: 'rotational', template: 'lattice' });
+    p.clues['0,0,A'] = { text: 'Clue', enumeration: '', explanation: 'Anagram of …' };
+    p.clues['0,0,D'] = { text: '', enumeration: '', explanation: 'Hidden' };
+    p.clues['2,0,A'] = { text: 'Other', enumeration: '', explanation: '  ' };
+    store.savePuzzle(p);
+    expect(store.loadPuzzle(p.id)!.clues).toEqual({
+      '0,0,A': { text: 'Clue', enumeration: '', explanation: 'Anagram of …' },
+      '0,0,D': { text: '', enumeration: '', explanation: 'Hidden' },
+      '2,0,A': { text: 'Other', enumeration: '' },
+    });
+  });
+
   it('repairs clue entries', () => {
     const p = migrate({ id: 'x', rows: 1, cols: 1, clues: {
       '0,0,A': { text: 'ok', links: ['0,1,D', 7, 'junk'] },

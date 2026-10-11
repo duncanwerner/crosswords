@@ -14,6 +14,9 @@ backups).
   survive renumbering), and enumerations like `(3,4)` or `(4-5)` drawn in the
   grid. Typing an answer like "man-of-war" fills the light and sets the
   enumeration.
+- **Explanations**: **Explain…** on a clue adds an optional note on how it
+  works. Play mode shows it once the puzzle is solved. It doesn't count
+  towards finishing a puzzle.
 - **Linked clues**: link a light to the lights its answer continues into
   (type "5" or "12d" in the clue's Linked field) for clues like `1/5`. The
   first light holds the clue and one enumeration for the whole answer; the
@@ -35,6 +38,8 @@ backups).
   toolbar or on a library card). An empty grid, read-only clues and no
   tools; your letters are saved apart from the puzzle, and it says when
   you've solved it, if the setter's grid is complete.
+- The library marks each puzzle **Complete** (every square filled, every
+  answer clued) or **Unfinished**.
 - Undo/redo for every edit; resizable panels; light and dark themes.
 
 ```sh

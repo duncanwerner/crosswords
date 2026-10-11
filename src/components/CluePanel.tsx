@@ -77,6 +77,7 @@ const ClueRow = (props: { light: Light }) => {
   const ed = useContext(EditorContext);
   const [error, setError] = createSignal('');
   const [linking, setLinking] = createSignal(false);
+  const [explaining, setExplaining] = createSignal(false);
 
   /** the whole answer: this light, plus any it links to */
   const answer = () => ed.entries().byLight.get(props.light.key) ?? { key: props.light.key, lights: [props.light], cells: props.light.cells, label: String(props.light.number) };
@@ -160,6 +161,13 @@ const ClueRow = (props: { light: Light }) => {
     flush();
     row.querySelector<HTMLInputElement>('[data-links]')?.focus();
   };
+
+  const startExplaining = (row: HTMLElement) => {
+    setExplaining(true);
+    flush();
+    row.querySelector<HTMLTextAreaElement>('[data-explanation]')?.focus();
+  };
+  const showExplanation = () => explaining() || !!entry()?.explanation;
 
   const activate = () => {
     if (ed.mode() !== 'fill') ed.setMode('fill');
@@ -259,6 +267,15 @@ const ClueRow = (props: { light: Light }) => {
             {logState() === 'saved' ? '✓ Logged' : logState() === 'changed' ? 'Update log' : 'Save to log'}
           </button>
         </Show>
+        <Show when={!showExplanation()}>
+          <button
+            class={styles.linkButton}
+            title="Explain how the clue works, for solvers to read once they've finished"
+            onClick={e => startExplaining(e.currentTarget.closest('[data-clue]')!)}
+          >
+            Explain…
+          </button>
+        </Show>
         <Show when={!linked() && !linking()}>
           <button
             class={styles.linkButton}
@@ -299,6 +316,21 @@ const ClueRow = (props: { light: Light }) => {
             <button class={styles.linkButton} title="Unlink: each light gets its own clue again" onClick={unlink}>Unlink</button>
           </Show>
         </div>
+      </Show>
+      <Show when={showExplanation()}>
+        <textarea
+          data-explanation
+          class={styles.explanation}
+          rows={1}
+          value={entry()?.explanation ?? ''}
+          placeholder="Explanation (optional), e.g. anagram of …"
+          aria-label={`${props.light.number} ${props.light.dir} explanation`}
+          onInput={e => ed.setClue(props.light.key, { explanation: e.currentTarget.value })}
+          onKeyDown={onTextKey}
+          onBlur={e => {
+            if (!e.currentTarget.value.trim()) setExplaining(false);
+          }}
+        />
       </Show>
       <Show when={error()}>
         <div class={styles.error} role="alert">{error()}</div>

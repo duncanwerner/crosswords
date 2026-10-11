@@ -106,7 +106,7 @@ const PlayView = (props: { answers: Puzzle }) => {
               Type to fill · <kbd>Space</kbd> switch direction · <kbd>Tab</kbd> next light · arrows to move
             </p>
           </div>
-          <PlayClues />
+          <PlayClues solved={status() === 'solved'} />
         </div>
       </div>
     </EditorContext>
@@ -145,7 +145,7 @@ const CurrentClue = () => {
 };
 
 /** the clue list, read-only: choosing a clue selects its light in the grid */
-const PlayClues = () => {
+const PlayClues = (props: { solved: boolean }) => {
   const ed = useContext(EditorContext);
   const lights = (dir: Direction) => ed.map().lights.filter(l => l.dir === dir);
 
@@ -208,6 +208,9 @@ const PlayClues = () => {
                         <span>
                           {ed.puzzle.clues[entry().key]?.text.trim() || <em class={styles.none}>No clue written</em>}
                           {' '}<span class={styles.enum}>({enumerationFor(ed.puzzle, entry())})</span>
+                          <Show when={props.solved && ed.puzzle.clues[entry().key]?.explanation?.trim()}>
+                            {text => <span class={styles.explanation}>{text()}</span>}
+                          </Show>
                         </span>
                       </button>
                     </Show>
