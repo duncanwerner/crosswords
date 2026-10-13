@@ -7,14 +7,17 @@
 .error { color: var(--danger); margin: -12px 0 20px; }
 .notice { color: var(--muted); margin: -12px 0 20px; }
 
+.sectionHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; margin: 0 0 12px; }
 .section {
-  margin: 0 0 12px;
+  margin: 0;
   font: 600 12px/1 var(--font-ui);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
 }
-.grid + .section { margin-top: 32px; }
+.grid + .sectionHead { margin-top: 32px; }
+.sort { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.sort select { height: 28px; padding: 0 4px; font-size: 12px; }
 .none { color: var(--muted); }
 .template { border-style: dashed; }
 

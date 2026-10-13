@@ -1,6 +1,7 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
 import { type ImportResult, deletePuzzle, duplicatePuzzle, exportLibrary, exportPuzzle, importFile, library, loadPuzzle, markTemplate, newFromTemplate } from '../state/library';
 import { openPuzzle, playPuzzle } from '../state/route';
+import { LIBRARY_SORTS, type LibrarySort, sortSummaries } from '../state/storage';
 import styles from './Library.module.css';
 import { NewPuzzleDialog } from './NewPuzzleDialog';
 import { Thumbnail } from './Thumbnail';
@@ -26,13 +27,50 @@ const ago = (time: number) => {
   return new Date(time).toLocaleDateString();
 };
 
+const SORT_KEY = 'cross:library-sort';
+const TEMPLATE_SORTS = LIBRARY_SORTS.filter(o => o.value !== 'complete' && o.value !== 'unfinished');
+
+/** the sort for each section; a per-browser preference */
+const readSorts = () => {
+  const sorts: { puzzles: LibrarySort; templates: LibrarySort } = { puzzles: 'newest', templates: 'newest' };
+  try {
+    const raw = JSON.parse(localStorage.getItem(SORT_KEY) || '{}');
+    if (LIBRARY_SORTS.some(o => o.value === raw.puzzles)) sorts.puzzles = raw.puzzles;
+    if (TEMPLATE_SORTS.some(o => o.value === raw.templates)) sorts.templates = raw.templates;
+  }
+  catch {
+    // defaults
+  }
+  return sorts;
+};
+
+const SortSelect = (props: { value: LibrarySort; options: typeof LIBRARY_SORTS; label: string; onChange: (sort: LibrarySort) => void }) => (
+  <label class={styles.sort}>
+    Sort
+    <select class="field" aria-label={props.label} value={props.value} onChange={e => props.onChange(e.currentTarget.value as LibrarySort)}>
+      <For each={props.options}>{o => <option value={o.value}>{o.label}</option>}</For>
+    </select>
+  </label>
+);
+
 export const Library = () => {
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal('');
   const [notice, setNotice] = createSignal('');
   let fileInput!: HTMLInputElement;
-  const templates = createMemo(() => library.puzzles.filter(s => s.template));
-  const puzzles = createMemo(() => library.puzzles.filter(s => !s.template));
+  const [sorts, setSorts] = createSignal(readSorts());
+  const setSort = (section: 'puzzles' | 'templates', sort: LibrarySort) => {
+    const next = { ...sorts(), [section]: sort };
+    setSorts(next);
+    try {
+      localStorage.setItem(SORT_KEY, JSON.stringify(next));
+    }
+    catch {
+      // preference only
+    }
+  };
+  const templates = createMemo(() => sortSummaries(library.puzzles.filter(s => s.template), sorts().templates));
+  const puzzles = createMemo(() => sortSummaries(library.puzzles.filter(s => !s.template), sorts().puzzles));
 
   const onImport = async () => {
     const file = fileInput.files?.[0];
@@ -102,7 +140,12 @@ export const Library = () => {
         }
       >
         <Show when={templates().length}>
-          <h2 class={styles.section}>Templates</h2>
+          <div class={styles.sectionHead}>
+            <h2 class={styles.section}>Templates</h2>
+            <Show when={templates().length > 1}>
+              <SortSelect value={sorts().templates} options={TEMPLATE_SORTS} label="Sort templates" onChange={sort => setSort('templates', sort)} />
+            </Show>
+          </div>
           <div class={styles.grid}>
             <For each={templates()} keyed={s => s.id}>
               {s => (
@@ -127,8 +170,13 @@ export const Library = () => {
             </For>
           </div>
         </Show>
-        <Show when={templates().length}>
-          <h2 class={styles.section}>Puzzles</h2>
+        <Show when={templates().length || puzzles().length > 1}>
+          <div class={styles.sectionHead}>
+            <h2 class={styles.section}>Puzzles</h2>
+            <Show when={puzzles().length > 1}>
+              <SortSelect value={sorts().puzzles} options={LIBRARY_SORTS} label="Sort puzzles" onChange={sort => setSort('puzzles', sort)} />
+            </Show>
+          </div>
         </Show>
         <Show when={puzzles().length} fallback={<p class={styles.none}>No puzzles yet. Start one from a template, or with New puzzle.</p>}>
           <div class={styles.grid}>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createPuzzle } from '../model/puzzle';
-import { createStorage, migrate, parseBackup, serializeLibrary, summarize } from './storage';
+import { type PuzzleSummary, createStorage, migrate, parseBackup, serializeLibrary, sortSummaries, summarize } from './storage';
 
 const memory = () => {
   const map = new Map<string, string>();
@@ -142,5 +142,30 @@ describe('storage', () => {
     });
     expect(store.loadIndex()).toEqual([]);
     expect(store.savePuzzle(createPuzzle({ rows: 3, cols: 3, style: 'barred', symmetry: 'none', template: 'empty' }))).toBe(false);
+  });
+});
+
+describe('sortSummaries', () => {
+  const s = (id: string, title: string, updated: number, complete = false) => ({ id, title, updated, complete }) as PuzzleSummary;
+  const list = [s('a', 'Puzzle 10', 1, true), s('b', '', 4), s('c', 'puzzle 2', 2), s('d', 'Apple', 3, true)];
+  const ids = (l: PuzzleSummary[]) => l.map(x => x.id).join('');
+
+  it('sorts by last edited, newest or oldest first', () => {
+    expect(ids(sortSummaries(list, 'newest'))).toBe('bdca');
+    expect(ids(sortSummaries(list, 'oldest'))).toBe('acdb');
+  });
+
+  it('sorts by title, ignoring case, numbers in order, untitled last', () => {
+    expect(ids(sortSummaries(list, 'title'))).toBe('dcab');
+  });
+
+  it('puts complete or unfinished first, then the newest', () => {
+    expect(ids(sortSummaries(list, 'complete'))).toBe('dabc');
+    expect(ids(sortSummaries(list, 'unfinished'))).toBe('bcda');
+  });
+
+  it('leaves the input alone', () => {
+    sortSummaries(list, 'title');
+    expect(ids(list)).toBe('abcd');
   });
 });

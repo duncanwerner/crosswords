@@ -30,6 +30,33 @@ export interface PuzzleSummary {
 
 export const SUMMARY_VERSION = 3;
 
+export type LibrarySort = 'newest' | 'oldest' | 'title' | 'complete' | 'unfinished';
+
+export const LIBRARY_SORTS: { value: LibrarySort; label: string }[] = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'oldest', label: 'Oldest' },
+  { value: 'title', label: 'Title' },
+  { value: 'complete', label: 'Complete first' },
+  { value: 'unfinished', label: 'Unfinished first' },
+];
+
+type Compare = (a: PuzzleSummary, b: PuzzleSummary) => number;
+
+const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
+const byNewest: Compare = (a, b) => b.updated - a.updated;
+const COMPARE: Record<LibrarySort, Compare> = {
+  newest: byNewest,
+  oldest: (a, b) => a.updated - b.updated,
+  /** untitled puzzles go last */
+  title: (a, b) =>
+    Number(!a.title.trim()) - Number(!b.title.trim()) || collator.compare(a.title.trim(), b.title.trim()) || byNewest(a, b),
+  complete: (a, b) => Number(b.complete) - Number(a.complete) || byNewest(a, b),
+  unfinished: (a, b) => Number(a.complete) - Number(b.complete) || byNewest(a, b),
+};
+
+/** a sorted copy. ties fall back to the most recently edited */
+export const sortSummaries = (list: readonly PuzzleSummary[], sort: LibrarySort) => [...list].sort(COMPARE[sort]);
+
 const thumbCell = (c: Cell) => (c.block ? '#' : c.barRight && c.barBottom ? '+' : c.barRight ? 'r' : c.barBottom ? 'b' : '.');
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
