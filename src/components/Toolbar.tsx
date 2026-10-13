@@ -20,9 +20,9 @@ export const Toolbar = () => {
     clearMenu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - clearMenu.offsetWidth - 8))}px`;
   };
 
-  const clear = (letters: boolean, clues: boolean, question: string) => {
+  const clear = (what: { letters?: boolean; clues?: boolean; title?: boolean }, question: string) => {
     clearMenu.hidePopover();
-    if (confirm(question)) ed.clear({ letters, clues });
+    if (confirm(question)) ed.clear(what);
     ed.focusGrid();
   };
 
@@ -97,7 +97,7 @@ export const Toolbar = () => {
           class="btn ghost"
           popovertarget="clear-menu"
           aria-haspopup="menu"
-          disabled={!ed.filled() && !ed.hasClues()}
+          disabled={!ed.filled() && !ed.hasClues() && !ed.puzzle.title}
         >
           Clear ▾
         </button>
@@ -109,18 +109,18 @@ export const Toolbar = () => {
           role="menu"
           onBeforeToggle={placeClearMenu}
         >
-          <button role="menuitem" disabled={!ed.filled()} onClick={() => clear(true, false, 'Clear all letters from the grid?')}>
+          <button role="menuitem" disabled={!ed.filled()} onClick={() => clear({ letters: true }, 'Clear all letters from the grid?')}>
             Clear letters
           </button>
-          <button role="menuitem" disabled={!ed.hasClues()} onClick={() => clear(false, true, 'Clear all clues and enumerations?')}>
+          <button role="menuitem" disabled={!ed.hasClues()} onClick={() => clear({ clues: true }, 'Clear all clues and enumerations?')}>
             Clear clues
           </button>
           <button
             role="menuitem"
-            disabled={!ed.filled() && !ed.hasClues()}
-            onClick={() => clear(true, true, 'Clear all letters and clues? The grid shape is kept.')}
+            disabled={!ed.filled() && !ed.hasClues() && !ed.puzzle.title}
+            onClick={() => clear({ letters: true, clues: true, title: true }, 'Clear the title, all letters and all clues? The grid shape is kept.')}
           >
-            Clear letters and clues
+            Clear everything
           </button>
         </div>
         <button class="btn ghost" onClick={() => exportPuzzle(snapshot(ed.puzzle) as Puzzle)}>Export</button>

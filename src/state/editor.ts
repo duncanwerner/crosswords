@@ -281,8 +281,8 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
     });
   };
 
-  /** clear letters, clues (text, enumerations and links), or both as one undo step */
-  const clear = (what: { letters?: boolean; clues?: boolean }) => {
+  /** clear letters, clues (text, enumerations and links) and/or the title as one undo step */
+  const clear = (what: { letters?: boolean; clues?: boolean; title?: boolean }) => {
     commit(draft => {
       if (what.letters) {
         for (const cell of draft.cells) {
@@ -291,6 +291,7 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
         }
       }
       if (what.clues) draft.clues = {};
+      if (what.title) draft.title = '';
     }, undefined, !!what.letters);
   };
   const clearLetters = () => clear({ letters: true });
