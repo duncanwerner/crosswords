@@ -60,9 +60,14 @@ export const GridView = () => {
     return map;
   });
 
-  /** word breaks and hyphens from valid enumerations */
+  /**
+   * word breaks and hyphens from valid enumerations. Blocked grids only: in
+   * a barred grid a break mark reads as a bar, and barred puzzles leave the
+   * split to the clue's enumeration.
+   */
   const breakMarks = createMemo(() => {
     const marks: Array<{ cell: number; dir: Direction; type: ',' | '-' }> = [];
+    if (barred()) return marks;
     for (const entry of ed.entries().list) {
       const text = p.clues[entry.key]?.enumeration ?? '';
       if (validate(text, entry.cells.length) !== 'ok') continue;
