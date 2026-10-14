@@ -7,6 +7,7 @@ import { status } from '../../state/words';
 import { words } from '../../words/client';
 import type { Crossing, SuggestResult, Suggestion } from '../../words/protocol';
 import { FLAG_ABBREVIATION, FLAG_PROPER } from '../../words/word-index';
+import { anagramLetters } from './AnagramsTool';
 import { BlockButton, DictionaryGate, type ToolProps, latestOnly } from './common';
 import shared from './tools.module.css';
 import styles from './WordsTool.module.css';
@@ -95,6 +96,13 @@ export const WordsTool = (props: ToolProps) => {
     ed.focusGrid();
   };
 
+  /** check a candidate's anagrams without filling it in */
+  const anagram = (word: string) => {
+    ed.setPreview(undefined);
+    anagramLetters(ed.currentEntry()?.key, word);
+    ed.showTool('anagrams');
+  };
+
   const hover = (s?: Suggestion) => {
     const q = query();
     ed.setPreview(s && q ? { cells: q.cells, word: s.word } : undefined);
@@ -152,7 +160,7 @@ export const WordsTool = (props: ToolProps) => {
                 <div class={[shared.results, { [shared.stale]: stale() }]}>
                   <ul class={styles.list} onPointerLeave={() => hover()}>
                     <For each={r().result.items} keyed={s => s.word}>
-                      {s => <SuggestionRow item={s()} pattern={r().query.pattern} onChoose={choose} onHover={hover} onBlock={w => ed.blockWords([w])} />}
+                      {s => <SuggestionRow item={s()} pattern={r().query.pattern} onChoose={choose} onHover={hover} onBlock={w => ed.blockWords([w])} onAnagram={anagram} />}
                     </For>
                   </ul>
                   <Show when={r().result.matched > r().result.items.length}>
@@ -176,6 +184,7 @@ const SuggestionRow = (props: {
   onChoose: (s: Suggestion) => void;
   onHover: (s?: Suggestion) => void;
   onBlock: (word: string) => void;
+  onAnagram: (word: string) => void;
 }) => {
   const level = () => bars(props.item.min);
   const letters = () => props.item.word.split('').map((ch, i) => ({ ch, fixed: props.pattern[i] !== '.' }));
@@ -206,6 +215,14 @@ const SuggestionRow = (props: {
         <span class={[styles.meter, { [styles.low]: level() === 1, [styles.dead]: level() === 0 }]} title={title()}>
           <For each={[1, 2, 3, 4]}>{n => <i class={{ [styles.on]: n <= level() }} />}</For>
         </span>
+      </button>
+      <button
+        class={shared.action}
+        title={`Anagram ${props.item.word}`}
+        aria-label={`Anagram ${props.item.word}`}
+        onClick={() => props.onAnagram(props.item.word)}
+      >
+        ⇄
       </button>
       <BlockButton word={props.item.word} onBlock={props.onBlock} />
     </li>

@@ -70,9 +70,9 @@
 
 .status { min-height: 20px; margin: 0; padding: 2px 16px; color: var(--ok); font-size: 12px; border-top: 1px solid var(--border); }
 
-/* block buttons on results: shown on hover/focus, always on touch screens */
+/* block (and other) buttons on results: shown on hover/focus, always on touch screens */
 .blockable { display: inline-flex; align-items: center; }
-.block {
+.block, .action {
   padding: 0 4px;
   border: 0;
   background: none;
@@ -83,8 +83,9 @@
   opacity: 0;
 }
 .block:hover, .block:focus-visible { color: var(--danger); outline: none; }
-.blockable:hover .block, .blockable:focus-within .block, li:hover > .blockers .block, li:focus-within > .blockers .block { opacity: 1; }
-@media (hover: none) { .block { opacity: 1; } }
+.action:hover, .action:focus-visible { color: var(--accent); outline: none; }
+.blockable:hover :is(.block, .action), .blockable:focus-within :is(.block, .action), li:hover > .blockers .block, li:focus-within > .blockers .block { opacity: 1; }
+@media (hover: none) { .block, .action { opacity: 1; } }
 
 .phrase { display: flex; align-items: baseline; gap: 8px; }
 .blockers { display: inline-flex; gap: 2px; }

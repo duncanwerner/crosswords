@@ -14,6 +14,12 @@ const NUMBER_WORDS = ['', 'Single words', 'Two words', 'Three words', 'Four word
 const [maxWords, setMaxWords] = createSignal(3);
 const [minLength, setMinLength] = createSignal(3);
 
+/** typed letters, tied to the light they were typed for */
+const [override, setOverride] = createSignal<{ key: string | undefined; text: string }>();
+
+/** fill the anagram input from another tool; the caller shows the tab */
+export const anagramLetters = (key: string | undefined, text: string) => setOverride({ key, text });
+
 /**
  * clue-writing helper: anagrams of the selected light's answer (once it's
  * complete), or of any letters typed in.
@@ -21,9 +27,6 @@ const [minLength, setMinLength] = createSignal(3);
 export const AnagramsTool = (props: ToolProps) => {
   const ed = useContext(EditorContext);
   const { copied, copy } = createCopier();
-
-  /** typed letters, tied to the light they were typed for */
-  const [override, setOverride] = createSignal<{ key: string | undefined; text: string }>();
   const [result, setResult] = createSignal<AnagramResult>();
   const [error, setError] = createSignal('');
 
