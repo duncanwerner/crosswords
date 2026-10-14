@@ -1,4 +1,4 @@
-import type { TypedChatMessages } from 'llm-support-core';
+import type { TypedChatMessages } from 'llm-support-core/src/stream.ts';
 import { describeCall } from './tools';
 
 /**

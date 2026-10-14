@@ -1,4 +1,7 @@
-import { CreateToolExecutor, type GenericToolCall, type IndexedToolResult, type ToolHandlerMap, defineTool } from 'llm-support-core';
+// llm-support-core's modules, not its index: the index also loads its markdown renderer (highlight.js, KaTeX)
+import type { GenericToolCall, IndexedToolResult } from 'llm-support-core/src/stream.ts';
+import { defineTool } from 'llm-support-core/src/tool-definition.ts';
+import { CreateToolExecutor, type ToolHandlerMap } from 'llm-support-core/src/tool-executor.ts';
 import * as v from 'valibot';
 import { describeEntry, describePuzzle, entryRef, resolveRef, type DescribedPuzzle } from '../model/describe';
 import type { LightMap } from '../model/lights';

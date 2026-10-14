@@ -1,8 +1,7 @@
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, onSettled, untrack, useContext } from 'solid-js';
 import DOMPurify from 'dompurify';
-import { Format } from 'llm-support-core';
-import 'katex/dist/katex.min.css';
 import { entryRef } from '../../model/describe';
+import { renderMarkdown } from '../../llm/markdown';
 import { chatItems } from '../../llm/view';
 import { EditorContext } from '../../state/editor';
 import { reviewNotes, setReviewNotes } from '../../state/library';
@@ -17,7 +16,7 @@ const rendered = new Map<string, string>();
 const markdown = (text: string) => {
   let html = rendered.get(text);
   if (html === undefined) {
-    html = DOMPurify.sanitize(Format(text));
+    html = DOMPurify.sanitize(renderMarkdown(text), { ADD_ATTR: ['target'] });
     if (rendered.size > 200) rendered.clear();
     rendered.set(text, html);
   }

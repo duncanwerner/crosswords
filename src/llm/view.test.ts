@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { TypedChatMessages } from 'llm-support-core';
+import type { TypedChatMessages } from 'llm-support-core/src/stream.ts';
 import { chatItems } from './view';
 
 describe('chatItems', () => {

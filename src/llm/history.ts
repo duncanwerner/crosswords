@@ -1,4 +1,4 @@
-import type { TypedChatMessages } from 'llm-support-core';
+import type { TypedChatMessages } from 'llm-support-core/src/stream.ts';
 
 /**
  * review chats, one per puzzle, kept in this browser only. a chat is in

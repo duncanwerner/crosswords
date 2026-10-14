@@ -1,5 +1,5 @@
 import { createSignal } from 'solid-js';
-import { type Model, Models } from 'llm-support-core';
+import { type Model, Models } from 'llm-support-core/src/models.ts';
 
 /**
  * settings for the Review tool's LLM: the model and an API key per provider.

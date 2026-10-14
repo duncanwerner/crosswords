@@ -1,5 +1,7 @@
 import { createSignal } from 'solid-js';
-import { AbortStream, AddUserChatMessage, type Model, Stream, type TypedChatMessages } from 'llm-support-core';
+// llm-support-core's modules, not its index: the index also loads its markdown renderer (highlight.js, KaTeX)
+import type { Model } from 'llm-support-core/src/models.ts';
+import { AbortStream, AddUserChatMessage, Stream, type TypedChatMessages } from 'llm-support-core/src/stream.ts';
 import LLMWorker from 'llm-support-core/worker?worker';
 import { loadChat, removeChat, saveChat } from '../llm/history';
 import { systemPrompt } from '../llm/prompt';

@@ -53,7 +53,10 @@ The README covers the features and code layout.
   - A request that times out gets the worker restarted.
 - **LLM work goes through `src/state/review-session.ts`**, which wraps
   llm-support-core's `Stream()`. The library is pinned to a commit in
-  `package.json`; bump the hash to update it. A new reviewer tool is a
+  `package.json`; bump the hash to update it. Import its modules
+  (`llm-support-core/src/stream.ts`), never the package index: the index
+  loads its markdown renderer, which brings in highlight.js and KaTeX. Chat replies
+  render with `src/llm/markdown.ts`. A new reviewer tool is a
   `defineTool` plus a handler in `src/llm/tools.ts`, listed in `TOOL_SET`;
   write tools must go through editor methods (and so `commit()`). API keys
   live in `cross:review` in localStorage and never go in the backup; the

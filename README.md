@@ -106,8 +106,9 @@ Cloudflare doesn't build it, it serves the `dist/` we upload.
   `review.ts` / `review-session.ts` (the Review tool's settings, and one
   puzzle's chat around llm-support-core's `Stream()`).
 - `src/llm/` – the Review tool's framework-free parts: the reviewer's tools
-  (`tools.ts`), system prompt, chat history storage, and `view.ts`, which
-  flattens each provider's transcript format for display. The puzzle text
+  (`tools.ts`), system prompt, chat history storage, `markdown.ts` (reply
+  rendering), and `view.ts`, which flattens each provider's transcript
+  format for display. The puzzle text
   the tools return comes from `src/model/describe.ts`. Unit tested.
 - `src/components/` – UI. `GridView` is an SVG grid with a hidden input for
   keyboard capture. `Play` reuses the editor state on a copy of the
