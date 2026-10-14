@@ -67,7 +67,14 @@ export const Toolbar = () => {
 
       <div class={styles.segment} role="group" aria-label="Mode">
         <button aria-pressed={String(ed.mode() === 'design') as 'true' | 'false'} onClick={() => mode('design')}>Design</button>
-        <button aria-pressed={String(ed.mode() === 'fill') as 'true' | 'false'} onClick={() => mode('fill')}>Fill</button>
+        <button
+          aria-pressed={String(ed.mode() === 'fill') as 'true' | 'false'}
+          disabled={ed.designOnly}
+          title={ed.designOnly ? 'Templates keep only the grid, so they have no letters to fill' : undefined}
+          onClick={() => mode('fill')}
+        >
+          Fill
+        </button>
       </div>
 
       <Show when={ed.mode() === 'design'}>

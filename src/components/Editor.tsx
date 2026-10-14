@@ -23,7 +23,7 @@ export const Editor = (props: { id: string }) => {
         </div>
       }
     >
-      {p => <EditorView editor={createEditor(p())} />}
+      {p => <EditorView editor={createEditor(p(), { designOnly: !!p().template })} />}
     </Show>
   );
 };

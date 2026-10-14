@@ -19,6 +19,8 @@ export interface EditorOptions {
   save?: (p: Puzzle) => void;
   /** the starting mode; by default fill if the grid has letters, else design */
   mode?: Mode;
+  /** design mode only, as for a template: setMode('fill') is ignored */
+  designOnly?: boolean;
 }
 
 /**
@@ -50,7 +52,8 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
   );
 
   const hasLetters = initial.cells.some(c => c.letter);
-  const [mode, setModeSignal] = createSignal<Mode>(options.mode ?? (hasLetters ? 'fill' : 'design'));
+  const designOnly = !!options.designOnly;
+  const [mode, setModeSignal] = createSignal<Mode>(designOnly ? 'design' : options.mode ?? (hasLetters ? 'fill' : 'design'));
 
   const firstWhite = Math.max(0, initial.cells.findIndex(c => !c.block));
   const [selection, setSelection] = createSignal<Selection>({ cell: firstWhite, dir: 'across' });
@@ -207,6 +210,7 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
   };
 
   const setMode = (next: Mode) => {
+    if (designOnly && next === 'fill') return;
     setModeSignal(next);
     if (next === 'fill') {
       const sel = selection();
@@ -386,7 +390,7 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
   const setSymmetry = (symmetry: Symmetry) => commit(d => { d.symmetry = symmetry; }, undefined, false);
 
   return {
-    puzzle, map, stats, filled, autoFilled, hasClues, gridVersion, mode, setMode, selection, select, selectLight, setSelection,
+    puzzle, map, stats, filled, autoFilled, hasClues, gridVersion, mode, setMode, designOnly, selection, select, selectLight, setSelection,
     currentLight, entries, currentEntry, flagged, flaggedKind, setFlaggedKind,
     registerGridFocus, focusGrid: () => gridFocus(),
     registerShowTool, showTool: (id: string) => toolShow(id),

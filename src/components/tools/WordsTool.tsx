@@ -146,7 +146,7 @@ export const WordsTool = (props: ToolProps) => {
           <Match when={!query()}>
             <div class={shared.message}>
               <p>Select a light in Fill mode to see words that fit.</p>
-              <Show when={ed.mode() === 'design'}>
+              <Show when={ed.mode() === 'design' && !ed.designOnly}>
                 <button class="btn" onClick={() => { ed.setMode('fill'); ed.focusGrid(); }}>Switch to Fill</button>
               </Show>
             </div>
