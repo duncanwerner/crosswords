@@ -30,6 +30,12 @@ const PROVIDERS = [...new Set(MODELS.map(m => m.provider.name))].map(name => ({
 }));
 
 /**
+ * a key field that browsers won't offer to save as a password: plain text
+ * masked by CSS, where the browser supports it, else a password field
+ */
+const MASK_KEY = typeof CSS !== 'undefined' && CSS.supports('-webkit-text-security', 'disc');
+
+/**
  * chat with an LLM about the puzzle. it reads clues and letters through
  * tools, and can set the review marks when asked. one chat per puzzle,
  * kept in this browser.
@@ -122,13 +128,16 @@ export const ReviewChat = (_props: ToolProps) => {
             <div class={local.field}>
               <label for="review-api-key">{model().provider.name} API key</label>
               <div class={local.key}>
-                {/* a key, not a login: name it, and ask for "new-password" since browsers ignore "off" on password fields */}
+                {/* a key, not a login: password managers ignore "off" (and "new-password") on password fields */}
                 <input
                   id="review-api-key"
-                  class="field"
-                  type={showKey() ? 'text' : 'password'}
+                  class={['field', { [local.masked]: MASK_KEY && !showKey() }]}
+                  type={MASK_KEY || showKey() ? 'text' : 'password'}
                   name="review-api-key"
-                  autocomplete="new-password"
+                  autocomplete={MASK_KEY ? 'off' : 'new-password'}
+                  data-1p-ignore
+                  data-lpignore="true"
+                  data-bwignore
                   spellcheck={false}
                   value={reviewSettings().keys[model().provider.name] ?? ''}
                   onInput={e => setReviewSettings({ keys: { ...reviewSettings().keys, [model().provider.name]: e.currentTarget.value } })}

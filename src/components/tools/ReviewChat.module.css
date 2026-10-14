@@ -7,6 +7,7 @@
 .key input { flex: 1; min-width: 0; }
 /* Edge's own reveal button only appears while typing; ours is always there */
 .key input::-ms-reveal { display: none; }
+.masked { -webkit-text-security: disc; }
 .field textarea { height: auto; padding: 6px 8px; resize: vertical; font: inherit; line-height: 1.4; color: var(--text); }
 
 .chat { display: flex; flex-direction: column; gap: 8px; padding: 10px 16px 12px; }
