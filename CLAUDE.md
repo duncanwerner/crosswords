@@ -74,6 +74,14 @@ There's no component test setup yet. Drive the app with Playwright against
 for Solid diagnostics such as `STRICT_READ_UNTRACKED`, `HUGE_FAN_IN` and
 `REACTIVE_WRITE_IN_OWNED_SCOPE`.
 
+- A fresh Playwright context has empty storage. Seed a puzzle in
+  `cross:puzzle:<id>` and list it in `cross:index` (`[{ "id": "<id>" }]` is
+  enough; the summary is rebuilt), then open `#/p/<id>`.
+- To test the Review tool, choose **Localhost** in its model list. That's
+  a local model on `localhost:8080` that speaks the Anthropic API and needs
+  no key. It's a quantized Qwen: it makes mistakes a frontier model wouldn't,
+  so keep puzzles small (5×5) and prompts short.
+
 ## Git
 
 The user works on `main` and reviews changes before asking for a commit. The
