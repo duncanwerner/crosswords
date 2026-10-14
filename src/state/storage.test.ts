@@ -96,6 +96,16 @@ describe('storage', () => {
     expect(parseBackup({ kind: 'cross-library' })).toBeUndefined();
   });
 
+  it('carries the reviewer notes only once they have been edited', () => {
+    const store = createStorage(memory());
+    expect(store.loadReviewNotes()).toBeUndefined();
+    expect(parseBackup(JSON.parse(serializeLibrary({ puzzles: [], clues: [], reviewNotes: store.loadReviewNotes() })))!.reviewNotes).toBeUndefined();
+    store.saveReviewNotes('No F.');
+    expect(store.loadReviewNotes()).toBe('No F.');
+    expect(parseBackup(JSON.parse(serializeLibrary({ puzzles: [], clues: [], reviewNotes: store.loadReviewNotes() })))!.reviewNotes).toBe('No F.');
+    expect(parseBackup({ kind: 'cross-library', version: 3, puzzles: [], reviewNotes: 7 })!.reviewNotes).toBeUndefined();
+  });
+
   it('reads version 1 backups, and refuses newer versions', () => {
     const a = createPuzzle({ rows: 3, cols: 3, style: 'blocked', symmetry: 'none', template: 'empty' });
     expect(parseBackup({ kind: 'cross-library', version: 1, puzzles: [a] })).toMatchObject({ puzzles: [{ id: a.id }], clues: [], unreadable: 0 });

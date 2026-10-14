@@ -41,6 +41,14 @@ puzzle, template and logged clue as one JSON file; **Import…** restores it
     puzzle yet. Kept in IndexedDB and included in **Back up library**; it
     also has its own export/import (single-puzzle exports don't include it).
   - Blocked: a per-puzzle list of words never to offer
+  - Review: chat with an LLM about the puzzle. It reads the grid, clues and
+    marks through tools, and sets marks when you ask (undoable). Pick any
+    model [llm-support-core](https://github.com/trebco/llm-support-core)
+    supports (Anthropic, OpenAI, Gemini, DeepSeek, or a local
+    Anthropic-compatible server on port 8080). API keys stay in this
+    browser and are not in backups, and so does the chat (one per puzzle).
+    Your notes for the reviewer apply to every puzzle and are included in
+    **Back up library**
 - **Play mode**: solve a puzzle as a solver would (**Play** in the editor's
   toolbar or on a library card). An empty grid, read-only clues and no
   tools; your letters are saved apart from the puzzle, and it says when
@@ -52,8 +60,10 @@ puzzle, template and logged clue as one JSON file; **Import…** restores it
   puzzle dialog) starts a puzzle with its grid: blocks, bars, size and
   symmetry, but no letters, clues or word lists.
 - **Backup**: **Back up library** saves every puzzle, template and logged
-  clue in one JSON file; **Import…** restores it, skipping puzzles and clues
-  already there. Play progress isn't included.
+  clue, and your notes for the reviewer, in one JSON file; **Import…**
+  restores it, skipping puzzles and clues already there (and keeping your
+  reviewer notes if you've edited them). Play progress and API keys aren't
+  included.
 - Undo/redo for every edit; resizable panels; light and dark themes.
 
 ```sh
@@ -92,11 +102,17 @@ Cloudflare doesn't build it, it serves the `dist/` we upload.
 - `src/state/` – Solid state: `library.ts` (global puzzle index),
   `editor.ts` (one open puzzle: store, memos, undo/redo, autosave),
   `storage.ts` (localStorage, schema migration, library backup format), `route.ts` (hash routing),
-  `clue-log.ts` (the clue log in IndexedDB, synced between tabs).
+  `clue-log.ts` (the clue log in IndexedDB, synced between tabs),
+  `review.ts` / `review-session.ts` (the Review tool's settings, and one
+  puzzle's chat around llm-support-core's `Stream()`).
+- `src/llm/` – the Review tool's framework-free parts: the reviewer's tools
+  (`tools.ts`), system prompt, chat history storage, and `view.ts`, which
+  flattens each provider's transcript format for display. The puzzle text
+  the tools return comes from `src/model/describe.ts`. Unit tested.
 - `src/components/` – UI. `GridView` is an SVG grid with a hidden input for
   keyboard capture. `Play` reuses the editor state on a copy of the
   puzzle with the solver's letters, saving them instead of the puzzle. `tools/` is the helper dock under the clue list (Words,
-  Anagrams, Regex, Auto-fill, Blocked); add a helper by writing a component
+  Anagrams, Regex, Auto-fill, Blocked, Review); add a helper by writing a component
   that takes `ToolProps` and listing it in `tools/registry.ts`.
 - `src/words/` – the word index (`word-index.ts`: per-length bitsets for each
   position × letter, so pattern matches are ANDs and counts are popcounts),

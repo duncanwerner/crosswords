@@ -1,3 +1,4 @@
+import { chatKey } from '../llm/history';
 import { toLetters } from '../model/ascii';
 import { type ClueRecord, toRecord } from '../model/clue-log';
 import { type PlayProgress, parseProgress } from '../model/play';
@@ -64,6 +65,7 @@ export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 const INDEX_KEY = 'cross:index';
 const puzzleKey = (id: string) => `cross:puzzle:${id}`;
 const progressKey = (id: string) => `cross:play:${id}`;
+const REVIEW_NOTES_KEY = 'cross:review-notes';
 
 const defaultStorage = (): StorageLike | undefined => {
   try {
@@ -153,8 +155,8 @@ export const serialize = (p: Puzzle) => JSON.stringify(stored(p));
 
 const BACKUP_KIND = 'cross-library';
 
-/** v1: puzzles only. v2: adds the clue log. */
-export const BACKUP_VERSION = 2;
+/** v1: puzzles only. v2: adds the clue log. v3: adds the reviewer notes. */
+export const BACKUP_VERSION = 3;
 
 /**
  * everything the app keeps, as one document: the library backup file now,
@@ -163,10 +165,12 @@ export const BACKUP_VERSION = 2;
 export interface Backup {
   puzzles: Puzzle[];
   clues: ClueRecord[];
+  /** the setter's notes for the Review tool; absent until they edit the default */
+  reviewNotes?: string;
 }
 
-export const serializeLibrary = ({ puzzles, clues }: Backup, exported = Date.now()) =>
-  JSON.stringify({ kind: BACKUP_KIND, version: BACKUP_VERSION, exported, puzzles: puzzles.map(stored), clueLog: clues });
+export const serializeLibrary = ({ puzzles, clues, reviewNotes }: Backup, exported = Date.now()) =>
+  JSON.stringify({ kind: BACKUP_KIND, version: BACKUP_VERSION, exported, puzzles: puzzles.map(stored), clueLog: clues, reviewNotes });
 
 /**
  * the contents of a library backup, or undefined if `raw` isn't one.
@@ -174,13 +178,14 @@ export const serializeLibrary = ({ puzzles, clues }: Backup, exported = Date.now
  */
 export const parseBackup = (raw: unknown): (Backup & { unreadable: number }) | undefined => {
   if (!raw || typeof raw !== 'object') return undefined;
-  const src = raw as { kind?: unknown; version?: unknown; puzzles?: unknown; clueLog?: unknown };
+  const src = raw as { kind?: unknown; version?: unknown; puzzles?: unknown; clueLog?: unknown; reviewNotes?: unknown };
   if (src.kind !== BACKUP_KIND || !Array.isArray(src.puzzles)) return undefined;
   if (Number(src.version) > BACKUP_VERSION) throw new Error('That backup was made by a newer version of Cross; reload the app to update it.');
   const rawClues = Array.isArray(src.clueLog) ? src.clueLog : [];
   const puzzles = src.puzzles.map(migrate).filter(p => p !== undefined);
   const clues = rawClues.map(toRecord).filter(r => r !== undefined);
-  return { puzzles, clues, unreadable: src.puzzles.length - puzzles.length + rawClues.length - clues.length };
+  const reviewNotes = typeof src.reviewNotes === 'string' ? src.reviewNotes : undefined;
+  return { puzzles, clues, reviewNotes, unreadable: src.puzzles.length - puzzles.length + rawClues.length - clues.length };
 };
 
 export const createStorage = (storage: StorageLike | undefined = defaultStorage()) => {
@@ -214,11 +219,12 @@ export const createStorage = (storage: StorageLike | undefined = defaultStorage(
 
   const savePuzzle = (p: Puzzle) => write(puzzleKey(p.id), serialize(p));
 
-  /** removes the puzzle and any play progress on it */
+  /** removes the puzzle, any play progress on it, and its review chat */
   const removePuzzle = (id: string) => {
     try {
       storage?.removeItem(puzzleKey(id));
       storage?.removeItem(progressKey(id));
+      storage?.removeItem(chatKey(id));
     } catch {
       // ignore
     }
@@ -228,7 +234,15 @@ export const createStorage = (storage: StorageLike | undefined = defaultStorage(
 
   const saveProgress = (id: string, progress: PlayProgress) => write(progressKey(id), JSON.stringify(progress));
 
-  return { loadIndex, saveIndex, loadPuzzle, savePuzzle, removePuzzle, loadProgress, saveProgress };
+  /** the reviewer notes, or undefined if never edited (so the default applies) */
+  const loadReviewNotes = () => {
+    const notes = read(REVIEW_NOTES_KEY);
+    return typeof notes === 'string' ? notes : undefined;
+  };
+
+  const saveReviewNotes = (notes: string) => write(REVIEW_NOTES_KEY, JSON.stringify(notes));
+
+  return { loadIndex, saveIndex, loadPuzzle, savePuzzle, removePuzzle, loadProgress, saveProgress, loadReviewNotes, saveReviewNotes };
 };
 
 export type PuzzleStorage = ReturnType<typeof createStorage>;

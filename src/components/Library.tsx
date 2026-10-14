@@ -14,6 +14,8 @@ const restored = (r: Extract<ImportResult, { kind: 'library' }>) => {
   const parts = [nothing ? 'Nothing new to restore:' : `Restored ${plural(r.added, 'puzzle')} and ${plural(r.clues, 'logged clue')}.`];
   if (r.existing) parts.push(`${plural(r.existing, 'puzzle')} already in your library ${r.existing === 1 ? 'was' : 'were'} left as is.`);
   if (r.clueError) parts.push(`The clue log couldn't be restored: ${r.clueError}`);
+  if (r.notes === 'restored') parts.push('Restored your notes for the reviewer.');
+  if (r.notes === 'kept') parts.push('Kept your notes for the reviewer; the backup has different ones.');
   if (r.unreadable) parts.push(`${plural(r.unreadable, 'entry', 'entries')} couldn't be read.`);
   if (r.failed) parts.push(`${plural(r.failed, 'puzzle')} didn't fit in browser storage.`);
   return parts.join(' ');
@@ -116,7 +118,7 @@ export const Library = () => {
           <small>Cryptic crossword editor</small>
         </h1>
         <Show when={library.puzzles.length}>
-          <button class="btn" onClick={onBackup} title="Download every puzzle, template and logged clue in one file">Back up library</button>
+          <button class="btn" onClick={onBackup} title="Download every puzzle, template and logged clue, and your reviewer notes, in one file">Back up library</button>
         </Show>
         <button class="btn" onClick={() => fileInput.click()} title="Open a puzzle file, or restore a library backup">Import…</button>
         <button class="btn primary" onClick={() => setCreating(true)}>New puzzle</button>

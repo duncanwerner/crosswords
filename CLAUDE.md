@@ -51,6 +51,13 @@ The README covers the features and code layout.
   - Every query carries the puzzle's block list.
   - Long operations run in slices and report progress.
   - A request that times out gets the worker restarted.
+- **LLM work goes through `src/state/review-session.ts`**, which wraps
+  llm-support-core's `Stream()`. The library is pinned to a commit in
+  `package.json`; bump the hash to update it. A new reviewer tool is a
+  `defineTool` plus a handler in `src/llm/tools.ts`, listed in `TOOL_SET`;
+  write tools must go through editor methods (and so `commit()`). API keys
+  live in `cross:review` in localStorage and never go in the backup; the
+  reviewer notes are library data and do (backup v3).
 - **Model code stays framework-free.** `src/model/` and `src/words/` have no
   Solid imports and are unit tested.
 - **Avoid huge reactive fan-in.** Dev mode warns at about 2,000 sources. Derive

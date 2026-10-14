@@ -1,4 +1,5 @@
-import { createStore, snapshot } from 'solid-js';
+import { createSignal, createStore, snapshot } from 'solid-js';
+import { DEFAULT_NOTES } from '../llm/prompt';
 import { type NewPuzzleOptions, createPuzzle, fromTemplate, newId } from '../model/puzzle';
 import type { ClueRecord } from '../model/clue-log';
 import { type PlayProgress } from '../model/play';
@@ -28,6 +29,20 @@ const loadIndex = () => {
 };
 
 const [library, setLibrary] = createStore({ puzzles: loadIndex() });
+
+/**
+ * the setter's standing notes for the Review tool. library data, like the
+ * clue log: shared by every puzzle and kept in backups (API keys are not;
+ * they stay in this browser).
+ */
+const [reviewNotes, setNotesSignal] = createSignal(storage.loadReviewNotes() ?? DEFAULT_NOTES);
+
+export { reviewNotes };
+
+export const setReviewNotes = (notes: string) => {
+  setNotesSignal(notes);
+  storage.saveReviewNotes(notes);
+};
 
 export { library };
 
@@ -120,7 +135,7 @@ export const exportLibrary = async () => {
   } catch (err) {
     warning = `The backup has your puzzles but not the clue log: ${(err as Error).message}`;
   }
-  download(serializeLibrary({ puzzles, clues }), `cross-library-${new Date().toISOString().slice(0, 10)}.json`);
+  download(serializeLibrary({ puzzles, clues, reviewNotes: storage.loadReviewNotes() }), `cross-library-${new Date().toISOString().slice(0, 10)}.json`);
   return warning;
 };
 
@@ -129,8 +144,10 @@ export type ImportResult =
   /**
    * puzzles and clues already here (by id) are skipped. `failed` puzzles
    * couldn't be saved (storage full); `clueError` says why no clues were added.
+   * `notes`: the backup's reviewer notes were restored, or kept out because
+   * this library's notes had been edited and differ.
    */
-  | { kind: 'library'; added: number; existing: number; unreadable: number; failed: number; clues: number; clueError?: string };
+  | { kind: 'library'; added: number; existing: number; unreadable: number; failed: number; clues: number; clueError?: string; notes?: 'restored' | 'kept' };
 
 /**
  * import a puzzle or a library backup. a single puzzle with a clashing id
@@ -151,6 +168,7 @@ export const importFile = async (file: File): Promise<ImportResult> => {
     } catch (err) {
       result.clueError = (err as Error).message;
     }
+    result.notes = restoreNotes(backup.reviewNotes);
     return result;
   }
   const p = migrate(raw);
@@ -161,6 +179,17 @@ export const importFile = async (file: File): Promise<ImportResult> => {
   }
   p.updated = Date.now();
   return { kind: 'puzzle', puzzle: add(p) };
+};
+
+/** a backup's reviewer notes replace ours only if ours were never edited */
+const restoreNotes = (notes: string | undefined) => {
+  if (notes === undefined) return undefined;
+  const ours = storage.loadReviewNotes();
+  if (ours === undefined) {
+    setReviewNotes(notes);
+    return 'restored';
+  }
+  return ours === notes ? undefined : 'kept';
 };
 
 /** puzzles keep their own dates, so the library order matches the backup's */
