@@ -1,7 +1,7 @@
 import { display } from './enumeration';
 import type { LightMap } from './lights';
 import { type Entries, type Entry, formatRef } from './links';
-import type { Cell, ClueEntry, LightKey, Puzzle } from './types';
+import type { Cell, ClueEntry, Light, LightKey, Puzzle } from './types';
 
 /**
  * plain-text views of a puzzle, for an LLM reviewer. terse on purpose:
@@ -15,18 +15,25 @@ const MARK: Record<string, string> = { rework: 'needs work', unsure: 'not sure',
 /** an entry's ref, "5a" or "12d", from its head light */
 export const entryRef = (entry: Entry) => formatRef(entry.lights[0]);
 
+/** where a light starts, "r1c3": row and column from 1, top left */
+export const startSquare = (light: Light) => `r${light.row + 1}c${light.col + 1}`;
+
 /** letters so far, '.' for an empty square */
 export const entryPattern = (cells: readonly Cell[], entry: Entry) =>
   entry.cells.map(i => cells[i].letter || '.').join('');
 
 const quote = (s: string) => JSON.stringify(s.trim());
 
-/** one line: ref, label and direction, enumeration, letters, clue, mark, explanation */
+/**
+ * one line: ref, start square, label and direction, enumeration, letters,
+ * clue, mark, explanation. the start square saves a model from counting
+ * across the grid text to place an answer, which they do badly.
+ */
 const entryLine = (puzzle: DescribedPuzzle, entry: Entry) => {
   const head = entry.lights[0];
   const clue: ClueEntry | undefined = puzzle.clues[entry.key];
   const parts = [
-    `${entryRef(entry)}`,
+    `${entryRef(entry)} ${startSquare(head)}`,
     entry.lights.length > 1 ? `(${entry.label} ${head.dir})` : '',
     display(clue?.enumeration ?? '', entry.cells.length),
     entryPattern(puzzle.cells, entry),
@@ -69,7 +76,7 @@ export const describePuzzle = (puzzle: DescribedPuzzle, map: LightMap, entries: 
   return [
     ...heading,
     '',
-    'Grid (# block, . empty, | bar):',
+    'Grid (# block, . empty, | bar; rows and columns count from 1 at the top left, so r1c3 is row 1, column 3):',
     describeGrid(puzzle),
     '',
     'Across:',
@@ -78,7 +85,7 @@ export const describePuzzle = (puzzle: DescribedPuzzle, map: LightMap, entries: 
     'Down:',
     ...down.map(e => entryLine(puzzle, e)),
     ...(members.length
-      ? ['', `Linked: ${members.map(l => `${formatRef(l)} see ${entryRef(entries.byLight.get(l.key)!)}`).join(', ')}`]
+      ? ['', `Linked: ${members.map(l => `${formatRef(l)} ${startSquare(l)} see ${entryRef(entries.byLight.get(l.key)!)}`).join(', ')}`]
       : []),
   ].join('\n');
 };

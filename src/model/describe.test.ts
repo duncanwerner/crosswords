@@ -40,16 +40,16 @@ describe('describePuzzle', () => {
       map,
       computeEntries(map, {}),
     );
-    expect(text).toContain('1a (5) CAT.. clue: "Pet" mark: good explanation: "def"');
-    expect(text).toContain('2d (5) T.... clue: none');
+    expect(text).toContain('1a r1c1 (5) CAT.. clue: "Pet" mark: good explanation: "def"');
+    expect(text).toContain('2d r1c3 (5) T.... clue: none');
     expect(text).toContain('5x5 blocked grid, 3/21 squares filled');
   });
 
   it('writes linked entries once, with their parts', () => {
     const links = { [key(1, 'across')]: [key(5, 'across')] };
     const text = describePuzzle(puzzle({ [key(1, 'across')]: { text: 'Long', enumeration: '5,5', links: links[key(1, 'across')] } }), map, computeEntries(map, links));
-    expect(text).toContain('1a (1/5 across) (5,5) CAT....... clue: "Long"');
-    expect(text).toContain('Linked: 5a see 1a');
+    expect(text).toContain('1a r1c1 (1/5 across) (5,5) CAT....... clue: "Long"');
+    expect(text).toContain('Linked: 5a r5c1 see 1a');
   });
 });
 

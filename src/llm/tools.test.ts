@@ -27,7 +27,7 @@ describe('runToolCalls', () => {
   it('reads the puzzle', async () => {
     const [result] = await runToolCalls(fake().ctx, [call('get_puzzle', {})]);
     expect(result.type).toBe('object');
-    expect(result.content).toContain('1a (3) CAT clue: none');
+    expect(result.content).toContain('1a r1c1 (3) CAT clue: none');
   });
 
   it('sets and clears marks', async () => {
