@@ -81,7 +81,7 @@ export const fromTemplate = (t: Puzzle, title = ''): Puzzle => {
   };
 };
 
-/** drop clues whose light no longer exists (or which are empty), and links to missing lights */
+/** drop clues whose light no longer exists (or which are empty: a mark alone counts), and links to missing lights */
 export const pruneClues = (puzzle: Pick<Puzzle, 'rows' | 'cols' | 'cells' | 'clues'>) => {
   const keys = new Set(computeLights(puzzle).lights.map(l => l.key));
   const clues: Partial<Record<LightKey, ClueEntry>> = {};
@@ -91,7 +91,7 @@ export const pruneClues = (puzzle: Pick<Puzzle, 'rows' | 'cols' | 'cells' | 'clu
     const { links: _, explanation, ...rest } = entry;
     const next: ClueEntry = links?.length ? { ...rest, links } : rest;
     if (explanation?.trim()) next.explanation = explanation;
-    if (next.text || next.enumeration || next.links || next.explanation) clues[key] = next;
+    if (next.text || next.enumeration || next.links || next.explanation || next.status) clues[key] = next;
   }
   return clues;
 };

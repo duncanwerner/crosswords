@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createPuzzle, fromTemplate, isComplete } from './puzzle';
+import { createPuzzle, fromTemplate, isComplete, pruneClues } from './puzzle';
 import { computeLights } from './lights';
 
 const filled = () => {
@@ -56,5 +56,15 @@ describe('fromTemplate', () => {
     expect(p.cells.map(c => [c.block, c.barRight, c.barBottom])).toEqual(t.cells.map(c => [c.block, c.barRight, c.barBottom]));
     expect(p.cells.every(c => !c.letter && !c.auto)).toBe(true);
     expect(fromTemplate(t).title).toBe('Untitled');
+  });
+});
+
+describe('pruneClues', () => {
+  it('keeps a clue whose only content is a mark, and drops empty ones', () => {
+    const p = filled();
+    const [first, second] = computeLights(p).lights;
+    p.clues[first.key] = { text: '', enumeration: '', status: 'rework' };
+    p.clues[second.key] = { text: '', enumeration: '', explanation: '  ' };
+    expect(pruneClues(p)).toEqual({ [first.key]: { text: '', enumeration: '', status: 'rework' } });
   });
 });
