@@ -39,3 +39,4 @@
 .meter.low i.on { background: var(--warn); }
 .meter.dead i:first-child { background: var(--danger); }
 
+.mine { color: var(--accent); }

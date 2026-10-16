@@ -3,10 +3,10 @@ import { toLetters } from '../../model/ascii';
 import { lightAt } from '../../model/lights';
 import type { Light } from '../../model/types';
 import { EditorContext } from '../../state/editor';
-import { status } from '../../state/words';
+import { myEnumeration, status } from '../../state/words';
 import { words } from '../../words/client';
 import type { Crossing, SuggestResult, Suggestion } from '../../words/protocol';
-import { FLAG_ABBREVIATION, FLAG_PROPER } from '../../words/word-index';
+import { FLAG_ABBREVIATION, FLAG_MINE, FLAG_PROPER } from '../../words/word-index';
 import { anagramLetters } from './AnagramsTool';
 import { BlockButton, DictionaryGate, type ToolProps, latestOnly } from './common';
 import shared from './tools.module.css';
@@ -92,7 +92,8 @@ export const WordsTool = (props: ToolProps) => {
     const entry = ed.currentEntry();
     if (!entry) return;
     ed.setPreview(undefined);
-    ed.fillLight(entry, s.word);
+    // one of your phrases sets the clue's enumeration too
+    ed.fillLight(entry, s.word, s.flags & FLAG_MINE ? myEnumeration(s.word) : undefined);
     ed.focusGrid();
   };
 
@@ -209,6 +210,9 @@ const SuggestionRow = (props: {
         </span>
         <span>
           <Show when={props.item.used}><span class={[styles.tag, styles.used]}>in grid</span></Show>
+          <Show when={props.item.flags & FLAG_MINE}>
+            <span class={[styles.tag, styles.mine]} title="From your word list">mine{myEnumeration(props.item.word) ? ` (${myEnumeration(props.item.word)})` : ''}</span>
+          </Show>
           <Show when={props.item.flags & FLAG_PROPER}><span class={styles.tag}>proper</span></Show>
           <Show when={props.item.flags & FLAG_ABBREVIATION}><span class={styles.tag}>abbr.</span></Show>
         </span>

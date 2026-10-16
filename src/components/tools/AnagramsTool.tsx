@@ -62,6 +62,8 @@ export const AnagramsTool = (props: ToolProps) => {
   );
 
   const current = () => (result()?.letters === letters() ? result() : undefined);
+  /** words from your own list in the results */
+  const mine = createMemo(() => new Set(result()?.mine ?? []));
 
   /** results grouped by number of words */
   const groups = createMemo(() => {
@@ -138,7 +140,7 @@ export const AnagramsTool = (props: ToolProps) => {
                           fallback={
                             <ul class={styles.rows}>
                               <For each={g().items}>
-                                {parts => <Phrase parts={parts} onCopy={copy} onBlock={w => ed.blockWords([w])} />}
+                                {parts => <Phrase parts={parts} mine={mine()} onCopy={copy} onBlock={w => ed.blockWords([w])} />}
                               </For>
                             </ul>
                           }
@@ -147,7 +149,10 @@ export const AnagramsTool = (props: ToolProps) => {
                             <For each={g().items.flatMap(parts => parts[0])}>
                               {word => (
                                 <span class={styles.blockable}>
-                                  <button class={styles.chip} title="Copy" onClick={() => copy(word)}>{word}</button>
+                                  <button class={styles.chip} title="Copy" onClick={() => copy(word)}>
+                                    {word}
+                                    <Show when={mine().has(word)}><span class={[styles.tag, styles.mine]} title="From your word list">mine</span></Show>
+                                  </button>
                                   <BlockButton word={word} onBlock={w => ed.blockWords([w])} />
                                 </span>
                               )}
@@ -175,7 +180,7 @@ export const AnagramsTool = (props: ToolProps) => {
  * a phrase: each part shows its first word, with same-letter alternatives
  * muted. hovering offers a ⊘ per word, since junk usually hides in phrases.
  */
-const Phrase = (props: { parts: string[][]; onCopy: (text: string) => void; onBlock: (word: string) => void }) => {
+const Phrase = (props: { parts: string[][]; mine: Set<string>; onCopy: (text: string) => void; onBlock: (word: string) => void }) => {
   const phrase = () => props.parts.map(p => p[0]).join(' ');
   const distinct = () => [...new Set(props.parts.flat())];
   return (
@@ -185,7 +190,7 @@ const Phrase = (props: { parts: string[][]; onCopy: (text: string) => void; onBl
           {(part, i) => (
             <>
               {i() > 0 ? ' ' : ''}
-              {part[0]}
+              <span class={{ [styles.mine]: props.mine.has(part[0]) }} title={props.mine.has(part[0]) ? 'From your word list' : undefined}>{part[0]}</span>
               <Show when={part.length > 1}>
                 <span class={styles.alt}>/{part.slice(1).join('/')}</span>
               </Show>

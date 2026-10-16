@@ -1,7 +1,7 @@
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, flush, onSettled, useContext } from 'solid-js';
 import { parseWordList } from '../../model/puzzle';
 import { EditorContext } from '../../state/editor';
-import { DICTIONARIES, settings } from '../../state/words';
+import { DICTIONARIES, MINE_MODES, myList, settings } from '../../state/words';
 import { words } from '../../words/client';
 import type { FillResult } from '../../words/fill';
 import type { FillProgress } from '../../words/protocol';
@@ -194,6 +194,12 @@ export const FillTool = (props: ToolProps) => {
 
   const dictionaryName = () => DICTIONARIES.find(d => d.value === settings().dictionary)?.label ?? '';
 
+  const MineCount = (p: { result: FillResult }) => (
+    <Show when={p.result.mine !== undefined && p.result.filled > 0}>
+      <p>{p.result.mine} of the {p.result.filled} words it filled {p.result.mine === 1 ? 'is' : 'are'} from your list.</p>
+    </Show>
+  );
+
   const Hardest = (p: { result: FillResult }) => (
     <Show when={p.result.hardest}>
       {h => (
@@ -272,7 +278,15 @@ export const FillTool = (props: ToolProps) => {
       </Show>
       <div class={styles.info}>
         <span>
-          Fills empty squares from the {dictionaryName()} dictionary
+          <Show
+            when={myList() && settings().mine === 'only'}
+            fallback={<>Fills empty squares from the {dictionaryName()} dictionary</>}
+          >
+            Fills empty squares with only your words
+          </Show>
+          <Show when={myList() && settings().mine !== 'only'}>
+            {' '}({MINE_MODES.find(m => m.value === settings().mine)?.label.toLowerCase()})
+          </Show>
           <Show when={ed.required().length}>, including every required word</Show>
           . No word repeats
           <Show when={ed.blocked().length}>, none of your {ed.blocked().length} blocked words</Show>
@@ -315,6 +329,7 @@ export const FillTool = (props: ToolProps) => {
                     </Match>
                     <Match when={d().result.status === 'complete'}>
                       <p class={fill.ok}>✓ Filled all {d().result.total} lights in {seconds(d().result.ms)}. It's previewed in the grid.</p>
+                      <MineCount result={d().result} />
                     </Match>
                     <Match when={d().result.status === 'impossible'}>
                       <p class={fill.bad}>{d().result.message}</p>
@@ -325,8 +340,13 @@ export const FillTool = (props: ToolProps) => {
                         {d().result.status === 'cancelled' ? 'Stopped' : `Couldn't finish in ${timeLimit()} s`}. The best attempt fills{' '}
                         {d().result.filled} of {d().result.total} lights.
                       </p>
+                      <MineCount result={d().result} />
                       <Hardest result={d().result} />
-                      <p class={fill.tip}>A longer time limit or a bigger dictionary can help.</p>
+                      <p class={fill.tip}>
+                        {myList() && settings().mine === 'only'
+                          ? 'A longer time limit, or My words first (to back-fill from the dictionary), can help.'
+                          : 'A longer time limit or a bigger dictionary can help.'}
+                      </p>
                     </Match>
                   </Switch>
                   <Show when={stale()}>

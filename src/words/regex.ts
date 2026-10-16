@@ -1,5 +1,5 @@
 import { members } from './bitset';
-import type { WordIndex } from './word-index';
+import { FLAG_MINE, type WordIndex } from './word-index';
 
 /**
  * dictionary words matching a regular expression. matching is
@@ -16,7 +16,7 @@ export interface RegexRequest {
 
 export interface RegexResult {
   total: number;
-  /** shortest first, then alphabetical */
+  /** shortest first, then alphabetical (your own words first, when they're preferred) */
   items: Array<{ word: string; flags: number }>;
 }
 
@@ -28,14 +28,25 @@ export const regexSearch = (index: WordIndex, req: RegexRequest): RegexResult =>
   const lengths = [...index.buckets.keys()]
     .filter(l => l >= req.minLength && l <= req.maxLength)
     .sort((a, b) => a - b);
-  for (const length of lengths) {
-    const bucket = index.buckets.get(length)!;
-    for (const i of members(bucket.allowed)) {
-      const word = bucket.words[i];
-      if (!rex.test(word)) continue;
-      result.total++;
-      if (result.items.length < req.limit) result.items.push({ word, flags: bucket.flags[i] });
+  // preferring your words: take them in a first pass so the limit can't
+  // crowd them out, then the rest
+  const passes = index.mineFirst ? [true, false] : [undefined];
+  for (const mine of passes) {
+    for (const length of lengths) {
+      const bucket = index.buckets.get(length)!;
+      for (const i of members(bucket.allowed)) {
+        const flags = bucket.flags[i];
+        if (mine !== undefined && !!(flags & FLAG_MINE) !== mine) continue;
+        const word = bucket.words[i];
+        if (!rex.test(word)) continue;
+        result.total++;
+        if (result.items.length < req.limit) result.items.push({ word, flags });
+      }
     }
+  }
+  if (index.mineFirst) {
+    const mine = (flags: number) => (flags & FLAG_MINE ? 0 : 1);
+    result.items.sort((a, b) => a.word.length - b.word.length || mine(a.flags) - mine(b.flags) || (a.word < b.word ? -1 : 1));
   }
   return result;
 };

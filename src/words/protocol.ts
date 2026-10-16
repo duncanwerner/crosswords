@@ -47,11 +47,21 @@ export interface SuggestResult {
 
 export interface LoadResult {
   dictionary: Dictionary;
+  /** words allowed by the options */
   words: number;
+  /** your own words in the index */
+  mine: number;
+}
+
+/** your own words, with an id that changes whenever the list does */
+export interface MineList {
+  id: number;
+  /** uppercase A-Z */
+  words: string[];
 }
 
 export type Request =
-  | { id: number; type: 'load'; url: string; dictionary: Dictionary; options: IndexOptions }
+  | { id: number; type: 'load'; url: string; dictionary: Dictionary; options: IndexOptions; mine?: MineList }
   | ({ id: number; type: 'suggest' } & SuggestRequest & Blocking)
   | ({ id: number; type: 'anagrams' } & AnagramRequest & Blocking)
   | ({ id: number; type: 'regex' } & RegexRequest & Blocking)

@@ -41,6 +41,14 @@ puzzle, template and logged clue as one JSON file; **Import…** restores it
     puzzle yet. Kept in IndexedDB and included in **Back up library**; it
     also has its own export/import (single-puzzle exports don't include it).
   - Blocked: a per-puzzle list of words never to offer
+  - **My words…** (beside the dictionary picker): load a text file of your
+    own words, one word or phrase per line ("man-of-war" is fine). It's
+    cleaned like the standard lists and kept for the browser tab only, not
+    in puzzles or backups. Use **Only my words**, **My words first** (yours
+    lead in every helper, and Auto-fill tries every one of yours that fits
+    before a dictionary word, then says how many it used), or **My words
+    mixed in**. Choosing one of your phrases in Words also sets its
+    enumeration
   - Review: chat with an LLM about the puzzle. It reads the grid, clues and
     marks through tools, and sets marks when you ask (undoable). Pick any
     model [llm-support-core](https://github.com/trebco/llm-support-core)

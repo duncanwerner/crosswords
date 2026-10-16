@@ -1,6 +1,6 @@
 import type { AnagramRequest, AnagramResult } from './anagrams';
 import type { FillResult } from './fill';
-import type { Blocking, Dictionary, FillProgress, FillRequest, LoadResult, Request, Response, SuggestRequest, SuggestResult } from './protocol';
+import type { Blocking, Dictionary, FillProgress, FillRequest, LoadResult, MineList, Request, Response, SuggestRequest, SuggestResult } from './protocol';
 import type { RegexRequest, RegexResult } from './regex';
 import type { IndexOptions } from './word-index';
 
@@ -77,8 +77,8 @@ const listUrl = (dictionary: Dictionary) =>
   new URL(`${import.meta.env.BASE_URL}wordlists/word-list-${dictionary}.json`, location.href).href;
 
 export const words = {
-  load: (dictionary: Dictionary, options: IndexOptions) =>
-    call<LoadResult>({ type: 'load', url: listUrl(dictionary), dictionary, options }),
+  load: (dictionary: Dictionary, options: IndexOptions, mine?: MineList) =>
+    call<LoadResult>({ type: 'load', url: listUrl(dictionary), dictionary, options, mine }),
   suggest: (req: SuggestRequest & Blocking) => call<SuggestResult>({ type: 'suggest', ...req }, 10000),
   anagrams: (req: AnagramRequest & Blocking) => call<AnagramResult>({ type: 'anagrams', ...req }, 10000),
   regex: (req: RegexRequest & Blocking) => call<RegexResult>({ type: 'regex', ...req }, 4000),

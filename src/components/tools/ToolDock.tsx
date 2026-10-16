@@ -1,7 +1,8 @@
 import { For, Show, createSignal, onSettled, useContext } from 'solid-js';
 import { EditorContext } from '../../state/editor';
-import { DICTIONARIES, loadWords, setWordSettings, settings, status } from '../../state/words';
+import { DICTIONARIES, MINE_MODES, clearMyList, loadMyList, loadWords, myList, setWordSettings, settings, status } from '../../state/words';
 import type { Dictionary } from '../../words/protocol';
+import type { MineMode } from '../../words/word-index';
 import { TOOLS } from './registry';
 import styles from './ToolDock.module.css';
 
@@ -43,6 +44,25 @@ export const ToolDock = (props: { collapsed: boolean; onToggle: () => void }) =>
     if (status().state === 'idle') loadWords();
   });
 
+  // your own word list: a hidden file input behind a button
+  let fileInput!: HTMLInputElement;
+  const [listError, setListError] = createSignal('');
+  const chooseList = (e: Event & { currentTarget: HTMLInputElement }) => {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = '';
+    if (!file) return;
+    loadMyList(file).then(() => setListError(''), (err: Error) => setListError(err.message));
+  };
+  const listSummary = () => {
+    const list = myList();
+    if (!list) return '';
+    const notes = [
+      list.duplicates && `${list.duplicates.toLocaleString()} repeated`,
+      list.skipped && `${list.skipped.toLocaleString()} without letters`,
+    ].filter(Boolean);
+    return `${list.name}: ${list.words.length.toLocaleString()} words${notes.length ? ` (lines skipped: ${notes.join(', ')})` : ''}. Kept until you close this tab.`;
+  };
+
   return (
     <section class={[styles.dock, { [styles.collapsed]: props.collapsed }]} aria-label="Tools">
       <header class={styles.head}>
@@ -75,6 +95,38 @@ export const ToolDock = (props: { collapsed: boolean; onToggle: () => void }) =>
             <input type="checkbox" checked={settings().proper} onChange={e => setWordSettings({ proper: e.currentTarget.checked })} />
             Proper nouns
           </label>
+          <input ref={fileInput} type="file" accept=".txt,text/plain" hidden onChange={chooseList} />
+          <Show
+            when={myList()}
+            fallback={
+              <button class={['btn', 'ghost', styles.mine]} title="Use a word list of your own: a text file with one word or phrase per line" onClick={() => fileInput.click()}>
+                My words…
+              </button>
+            }
+          >
+            {list => (
+              <span class={styles.mineSet}>
+                <button class={['btn', 'ghost', styles.mine]} title={`${listSummary()} Click to load a different file.`} onClick={() => fileInput.click()}>
+                  {list().name.replace(/\.txt$/i, '')} · {list().words.length.toLocaleString()}
+                </button>
+                <select
+                  class="field"
+                  aria-label="How to use your words"
+                  title={MINE_MODES.find(m => m.value === settings().mine)?.description}
+                  value={settings().mine}
+                  onChange={e => setWordSettings({ mine: e.currentTarget.value as MineMode })}
+                >
+                  <For each={MINE_MODES}>{m => <option value={m.value}>{m.label}</option>}</For>
+                </select>
+                <button class={['btn', 'ghost', styles.clear]} title={`Stop using ${list().name}`} aria-label={`Stop using ${list().name}`} onClick={() => clearMyList()}>
+                  ×
+                </button>
+              </span>
+            )}
+          </Show>
+          <Show when={listError()}>
+            <span class={[styles.check, styles.error]} role="alert">{listError()}</span>
+          </Show>
           <Show when={status().state === 'loading'}>
             <span class={styles.check} aria-live="polite">Loading…</span>
           </Show>

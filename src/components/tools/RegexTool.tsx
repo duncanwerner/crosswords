@@ -3,7 +3,7 @@ import { EditorContext } from '../../state/editor';
 import { status } from '../../state/words';
 import { words } from '../../words/client';
 import { type LengthOp, type RegexResult, compile, parseLengths } from '../../words/regex';
-import { FLAG_ABBREVIATION, FLAG_PROPER } from '../../words/word-index';
+import { FLAG_ABBREVIATION, FLAG_MINE, FLAG_PROPER } from '../../words/word-index';
 import { BlockButton, CopyStatus, DictionaryGate, type ToolProps, createCopier, latestOnly } from './common';
 import styles from './tools.module.css';
 
@@ -154,6 +154,7 @@ export const RegexTool = (props: ToolProps) => {
                               <span class={styles.blockable}>
                                 <button class={styles.chip} title="Copy" onClick={() => copy(item.word)}>
                                   {item.word}
+                                  <Show when={item.flags & FLAG_MINE}><span class={[styles.tag, styles.mine]} title="From your word list">mine</span></Show>
                                   <Show when={item.flags & FLAG_PROPER}><span class={styles.tag}>proper</span></Show>
                                   <Show when={item.flags & FLAG_ABBREVIATION}><span class={styles.tag}>abbr.</span></Show>
                                 </button>

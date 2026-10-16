@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import type { Blocking, Dictionary, FillProgress, FillRequest, LoadResult, Request, Response } from './protocol';
+import type { Blocking, Dictionary, FillProgress, FillRequest, LoadResult, MineList, Request, Response } from './protocol';
 import { anagrams } from './anagrams';
 import { Filler, type FillResult } from './fill';
 import { regexSearch } from './regex';
@@ -8,17 +8,30 @@ import { WordIndex } from './word-index';
 
 /**
  * hosts the word index off the main thread. messages are handled in order,
- * but loading is async, so queries wait on the current load.
+ * but loading is async, so queries wait on the current load. the index is
+ * the dictionary plus your own words, rebuilt when either changes; the
+ * dictionary's raw list is kept so a new list of yours doesn't refetch it.
  */
 
-let loaded: { dictionary: Dictionary; index: WordIndex } | undefined;
+let loaded: { dictionary: Dictionary; mineId: number } | undefined;
 let ready: Promise<WordIndex> | undefined;
+let raw: { dictionary: Dictionary; words: Promise<string[]> } | undefined;
 
-const load = async (url: string, dictionary: Dictionary) => {
+const fetchList = async (url: string, dictionary: Dictionary) => {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Couldn't load the ${dictionary} word list (${response.status}).`);
-  const raw: string[] = await response.json();
-  return new WordIndex(raw);
+  return (await response.json()) as string[];
+};
+
+const load = async (url: string, dictionary: Dictionary, mine: MineList | undefined) => {
+  if (raw?.dictionary !== dictionary) {
+    const words = fetchList(url, dictionary);
+    raw = { dictionary, words };
+    words.catch(() => {
+      if (raw?.words === words) raw = undefined;
+    });
+  }
+  return new WordIndex(await raw.words, undefined, mine?.words);
 };
 
 /** the loaded index, with this query's block list applied */
@@ -73,20 +86,21 @@ const fill = async (id: number, req: FillRequest & Blocking): Promise<FillResult
 const handle = async (msg: Request): Promise<unknown> => {
   switch (msg.type) {
     case 'load': {
-      if (loaded?.dictionary !== msg.dictionary || !ready) {
+      const mineId = msg.mine?.id ?? 0;
+      if (loaded?.dictionary !== msg.dictionary || loaded.mineId !== mineId || !ready) {
         const dictionary = msg.dictionary;
-        ready = load(msg.url, dictionary).then(index => {
-          loaded = { dictionary, index };
-          return index;
-        });
-        ready.catch(() => {
+        loaded = { dictionary, mineId };
+        const pending = load(msg.url, dictionary, msg.mine);
+        ready = pending;
+        pending.catch(() => {
+          if (ready !== pending) return;
           ready = undefined;
           loaded = undefined;
         });
       }
       const index = await ready;
       index.setOptions(msg.options);
-      return { dictionary: msg.dictionary, words: index.size } satisfies LoadResult;
+      return { dictionary: msg.dictionary, words: index.size, mine: index.mineCount } satisfies LoadResult;
     }
     case 'suggest':
       return suggest(await index(msg.blocked), msg);

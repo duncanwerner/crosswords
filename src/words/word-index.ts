@@ -13,10 +13,19 @@ import { type Bitset, andInto, clear, count, countAnd, full, members, set, words
 
 export const FLAG_PROPER = 1;
 export const FLAG_ABBREVIATION = 2;
+/** from your own word list */
+export const FLAG_MINE = 4;
+
+/**
+ * how your own words mix with the dictionary: only yours, yours ahead of
+ * the rest, or all on equal terms
+ */
+export type MineMode = 'only' | 'first' | 'mixed';
 
 export interface IndexOptions {
   /** include proper nouns and abbreviations */
   proper: boolean;
+  mine: MineMode;
 }
 
 export interface Bucket {
@@ -50,12 +59,18 @@ const indexOf = (list: readonly string[], word: string) => {
 
 export class WordIndex {
   readonly buckets = new Map<number, Bucket>();
-  protected options: IndexOptions = { proper: false };
+  protected options: IndexOptions = { proper: false, mine: 'first' };
+  /** how many of your own words are in the index */
+  readonly mineCount: number;
   protected blocked: string[] = [];
   protected blockedKey = '';
 
-  /** raw dictionary words, any case; case decides proper noun / abbreviation */
-  constructor(raw: readonly string[], options?: Partial<IndexOptions>) {
+  /**
+   * raw dictionary words, any case; case decides proper noun / abbreviation.
+   * `mine` are your own words (uppercase A-Z): never proper nouns or
+   * abbreviations, since you chose them.
+   */
+  constructor(raw: readonly string[], options?: Partial<IndexOptions>, mine: readonly string[] = []) {
     // merge variants: BILL is common if any variant ("bill") is lowercase
     const merged = new Map<string, number>();
     for (const word of raw) {
@@ -68,6 +83,8 @@ export class WordIndex {
       const prev = merged.get(upper);
       merged.set(upper, prev === undefined ? flags : prev & flags);
     }
+    for (const word of mine) if (word) merged.set(word, FLAG_MINE);
+    this.mineCount = new Set(mine.filter(Boolean)).size;
 
     const byLength = new Map<number, string[]>();
     for (const word of merged.keys()) {
@@ -99,12 +116,32 @@ export class WordIndex {
     this.options = { ...this.options, ...options };
     for (const bucket of this.buckets.values()) {
       const allowed = new Uint32Array(bucket.size);
+      const only = this.mineOnly;
       bucket.flags.forEach((flags, i) => {
-        if (this.options.proper || !flags) set(allowed, i);
+        const ok = only ? flags & FLAG_MINE : this.options.proper || !(flags & (FLAG_PROPER | FLAG_ABBREVIATION));
+        if (ok) set(allowed, i);
       });
       bucket.base = allowed;
     }
     this.applyBlocked();
+  }
+
+  /** only your own words are allowed */
+  get mineOnly() {
+    return this.mineCount > 0 && this.options.mine === 'only';
+  }
+
+  /** your own words should be offered ahead of the rest */
+  get mineFirst() {
+    return this.mineCount > 0 && this.options.mine === 'first';
+  }
+
+  /** a word's flags, or undefined if it isn't in the index */
+  flagsOf(word: string) {
+    const bucket = this.buckets.get(word.length);
+    if (!bucket) return undefined;
+    const i = indexOf(bucket.words, word);
+    return i < 0 ? undefined : bucket.flags[i];
   }
 
   /**

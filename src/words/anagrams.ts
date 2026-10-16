@@ -1,5 +1,5 @@
 import { members } from './bitset';
-import type { WordIndex } from './word-index';
+import { FLAG_MINE, type WordIndex } from './word-index';
 
 /**
  * anagrams of a set of letters, as one word or a phrase of several.
@@ -28,6 +28,8 @@ export interface AnagramResult {
   items: Anagram[];
   /** true if the limit or time budget cut the search short */
   truncated: boolean;
+  /** the words in these results that come from your own list */
+  mine: string[];
 }
 
 const A = 65;
@@ -43,7 +45,7 @@ const signature = (word: string) => word.split('').sort().join('');
 export const anagrams = (index: WordIndex, req: AnagramRequest): AnagramResult => {
   const letters = req.letters;
   const n = letters.length;
-  const result: AnagramResult = { letters, items: [], truncated: false };
+  const result: AnagramResult = { letters, items: [], truncated: false, mine: [] };
   if (!n) return result;
 
   const target = new Int16Array(26);
@@ -51,6 +53,7 @@ export const anagrams = (index: WordIndex, req: AnagramRequest): AnagramResult =
 
   // every allowed word that fits inside the letters, grouped by signature
   const bySig = new Map<string, Group>();
+  const mine = new Set<string>();
   const scratch = new Int16Array(26);
   for (const bucket of index.buckets.values()) {
     if (bucket.length > n || bucket.length < req.minLength) continue;
@@ -65,6 +68,7 @@ export const anagrams = (index: WordIndex, req: AnagramRequest): AnagramResult =
         }
       }
       if (!fits) continue;
+      if (bucket.flags[i] & FLAG_MINE) mine.add(word);
       const sig = signature(word);
       const group = bySig.get(sig);
       if (group) group.words.push(word);
@@ -148,6 +152,18 @@ export const anagrams = (index: WordIndex, req: AnagramRequest): AnagramResult =
   result.items = result.items
     .map(a => (a.parts.length === 1 ? { parts: [a.parts[0].filter(w => w !== letters)] } : a))
     .filter(a => a.parts[0].length);
+
+  if (mine.size) {
+    const has = (a: Anagram) => a.parts.some(p => p.some(w => mine.has(w)));
+    result.mine = [...new Set(result.items.flatMap(a => a.parts.flat()).filter(w => mine.has(w)))];
+    // preferring your words: they lead each part, and phrases using them come first
+    if (index.mineFirst) {
+      const rank = (w: string) => (mine.has(w) ? 0 : 1);
+      result.items = result.items
+        .map(a => ({ parts: a.parts.map(p => [...p].sort((x, y) => rank(x) - rank(y))) }))
+        .sort((a, b) => Number(has(b)) - Number(has(a)));
+    }
+  }
 
   return result;
 };

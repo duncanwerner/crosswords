@@ -113,3 +113,4 @@
 }
 .blockedChip .remove:hover { color: var(--danger); }
 .warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
+.tag.mine, .mine { color: var(--accent); }

@@ -1,7 +1,7 @@
 import { type GridShape, computeLights } from '../model/lights';
 import type { Light, LightKey } from '../model/types';
 import { count, countAnd, members } from './bitset';
-import type { WordIndex } from './word-index';
+import { FLAG_MINE, type WordIndex } from './word-index';
 
 /**
  * grid auto-fill as constraint search:
@@ -9,6 +9,8 @@ import type { WordIndex } from './word-index';
  *  - candidates ordered by how many options they leave each crossing, with
  *    some noise so runs differ, and any candidate that leaves a crossing
  *    with no words is skipped (forward checking);
+ *  - when your own words are preferred, every one that fits a light is
+ *    tried (in score order) before any dictionary word;
  *  - no duplicate words; blocked words never appear (the index handles it);
  *  - required words are placed first, each in whichever light of its
  *    length suits the crossings best. they needn't be in the dictionary,
@@ -44,6 +46,8 @@ export interface FillResult {
   nodes: number;
   restarts: number;
   ms: number;
+  /** lights in that result filled with your own words, when you have a list */
+  mine?: number;
   /** the light that most often had no candidates */
   hardest?: { key: LightKey; number: number; dir: Light['dir'] };
   message?: string;
@@ -297,14 +301,16 @@ export class Filler {
     const m = this.index.match(this.pattern(li));
     if (!m) return [];
     const checks = this.crossChecks(li);
-    const scored: Array<Option & { score: number }> = [];
+    const mineFirst = this.index.mineFirst;
+    const scored: Array<Option & { score: number; mine: number }> = [];
     for (const i of members(m.set)) {
       const word = m.bucket.words[i];
       if (this.used.has(word)) continue;
       const score = this.score(word, checks);
-      if (score !== undefined) scored.push({ light: li, word, score });
+      const mine = mineFirst && m.bucket.flags[i] & FLAG_MINE ? 1 : 0;
+      if (score !== undefined) scored.push({ light: li, word, score, mine });
     }
-    scored.sort((a, b) => b.score - a.score);
+    scored.sort((a, b) => b.mine - a.mine || b.score - a.score);
     return scored;
   }
 
@@ -477,14 +483,24 @@ export class Filler {
    * so no fill exists.
    */
   protected exhausted(): 'impossible' {
+    const words = this.index.mineOnly ? 'only your own words' : 'the current dictionary';
     this.impossible ??= this.required.length
-      ? 'No fill exists for this grid with these required words and the current dictionary and block list.'
-      : 'No fill exists for this grid with the current dictionary and block list.';
+      ? `No fill exists for this grid with these required words, ${words} and the block list.`
+      : `No fill exists for this grid with ${words} and the block list.`;
     return 'impossible';
   }
 
   result(status: FillStatus, ms: number): FillResult {
     const letters = Array.from(status === 'complete' ? this.letters : this.best.letters, v => (v ? String.fromCharCode(A - 1 + v) : '.')).join('');
+    let mine: number | undefined;
+    if (this.index.mineCount) {
+      mine = 0;
+      this.lights.forEach((l, li) => {
+        if (this.initialAssigned[li]) return;
+        const word = l.cells.map(c => letters[c]).join('');
+        if (!word.includes('.') && (this.index.flagsOf(word) ?? 0) & FLAG_MINE) mine!++;
+      });
+    }
     let hardest: FillResult['hardest'];
     if (status !== 'complete') {
       let max = 0;
@@ -504,6 +520,7 @@ export class Filler {
       nodes: this.nodes,
       restarts: this.restarts,
       ms,
+      mine,
       hardest,
       message: this.impossible,
     };
