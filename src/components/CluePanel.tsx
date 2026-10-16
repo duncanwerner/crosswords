@@ -272,6 +272,8 @@ const ClueRow = (props: { light: Light }) => {
         <input
           value={entry()?.enumeration ?? ''}
           placeholder={String(length())}
+          // grows with its text, so long enumerations like 5-2-3 aren't cut off
+          style={{ width: `${Math.max(entry()?.enumeration?.length ?? 0, String(length()).length) + 2.5}ch` }}
           aria-label={`${props.light.number} ${props.light.dir} enumeration`}
           onInput={e => ed.setClue(props.light.key, { enumeration: e.currentTarget.value })}
           onBlur={e => tidyEnumeration(e.currentTarget.value)}
