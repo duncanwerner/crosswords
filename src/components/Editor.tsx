@@ -2,7 +2,7 @@ import { For, Show, createSignal, onSettled, untrack } from 'solid-js';
 import { loadClueLog } from '../state/clue-log';
 import { createEditor, EditorContext } from '../state/editor';
 import { loadPuzzle } from '../state/library';
-import { openLibrary } from '../state/route';
+import { forgetLight, openLibrary, route } from '../state/route';
 import { CluePanel } from './CluePanel';
 import styles from './Editor.module.css';
 import { GridView } from './GridView';
@@ -12,6 +12,9 @@ import { Toolbar } from './Toolbar';
 
 export const Editor = (props: { id: string }) => {
   const initial = loadPuzzle(untrack(() => props.id));
+  const at = untrack(route);
+  const light = at.view === 'editor' ? at.light : undefined;
+  if (light) forgetLight(untrack(() => props.id));
 
   return (
     <Show
@@ -23,7 +26,7 @@ export const Editor = (props: { id: string }) => {
         </div>
       }
     >
-      {p => <EditorView editor={createEditor(p(), { designOnly: !!p().template })} />}
+      {p => <EditorView editor={createEditor(p(), { designOnly: !!p().template, light })} />}
     </Show>
   );
 };

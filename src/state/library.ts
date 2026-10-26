@@ -3,6 +3,7 @@ import { DEFAULT_NOTES } from '../llm/prompt';
 import { type NewPuzzleOptions, createPuzzle, fromTemplate, newId } from '../model/puzzle';
 import type { ClueRecord } from '../model/clue-log';
 import { type PlayProgress } from '../model/play';
+import { type SearchEntry, searchEntries } from '../model/search';
 import type { Puzzle } from '../model/types';
 import { allClues, mergeClues } from './clue-log';
 import { type PuzzleSummary, SUMMARY_VERSION, createStorage, migrate, parseBackup, serialize, serializeLibrary, summarize } from './storage';
@@ -77,6 +78,24 @@ export const savePuzzle = (p: Puzzle) => {
   }
 };
 
+/** each puzzle's searchable entries, rebuilt when it's saved again */
+const searchCache = new Map<string, { revision: number; updated: number; entries: SearchEntry[] }>();
+
+/**
+ * every puzzle (not templates) with its answers and clues, for the library
+ * search. the first call parses every puzzle; later calls only those changed.
+ */
+export const searchIndex = () =>
+  library.puzzles.filter(s => !s.template).map(s => {
+    let cached = searchCache.get(s.id);
+    if (!cached || cached.revision !== s.revision || cached.updated !== s.updated) {
+      const p = storage.loadPuzzle(s.id);
+      cached = { revision: s.revision, updated: s.updated, entries: p ? searchEntries(p) : [] };
+      searchCache.set(s.id, cached);
+    }
+    return { puzzle: s, entries: cached.entries };
+  });
+
 /** a solver's letters in play mode, kept apart from the puzzle */
 export const loadProgress = (id: string) => storage.loadProgress(id);
 export const saveProgress = (id: string, progress: PlayProgress) => storage.saveProgress(id, progress);
@@ -106,6 +125,7 @@ export const markTemplate = (id: string, template: boolean) => {
 
 export const deletePuzzle = (id: string) => {
   storage.removePuzzle(id);
+  searchCache.delete(id);
   updateIndex(list => list.filter(s => s.id !== id));
 };
 

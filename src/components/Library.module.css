@@ -66,3 +66,35 @@
   border-radius: 10px;
 }
 .empty p { margin: 0 0 16px; }
+
+/* our own clear button, since the browser's hides when the box isn't focused */
+.search { position: relative; max-width: 480px; margin: 0 0 24px; }
+.search :global(.field) { width: 100%; height: 34px; padding-right: 32px; }
+.search :global(.field)::-webkit-search-cancel-button { display: none; }
+.clear {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.clear:hover, .clear:focus-visible { background: var(--surface-2); color: var(--text); }
+.count { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+.results { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
+.results li + li { border-top: 1px solid var(--border); }
+.hit { display: grid; gap: 2px; width: 100%; padding: 10px 16px; border: 0; background: none; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+.hit:hover, .hit:focus-visible { background: var(--surface-2); }
+.hitHead { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.answer { font: 600 13px/1.4 var(--font-grid); letter-spacing: 0.06em; }
+.enum { color: var(--muted); font-size: 12px; }
+.source { margin-left: auto; color: var(--muted); font-size: 12px; }
+.clue { line-height: 1.4; }
+.unclued { color: var(--muted); font-style: italic; }

@@ -61,6 +61,10 @@ puzzle, template and logged clue as one JSON file; **Import…** restores it
   toolbar or on a library card). An empty grid, read-only clues and no
   tools; your letters are saved apart from the puzzle, and it says when
   you've solved it, if the setter's grid is complete.
+- **Library search**: the box above the cards searches every puzzle's
+  answers and clues, with the Clue log's rules (`dog` matches answers
+  containing DOG or clues containing "dog"; `S?OP` is a pattern for whole
+  answers). Choosing a result opens the puzzle at that clue.
 - The library marks each puzzle **Complete** (every square filled, every
   answer clued) or **Unfinished**.
 - **Templates**: **Make template** on a library card moves a puzzle to the

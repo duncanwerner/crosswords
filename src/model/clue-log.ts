@@ -46,20 +46,28 @@ export const toRecord = (raw: unknown): ClueRecord | undefined => {
 };
 
 /**
- * search the log. a pattern with '.' or '?' for unknown letters ("S.OP")
- * matches answers of that length; other text matches answers containing
- * its letters, or clues containing it.
+ * a search query, shared by the clue log and the library search. a pattern
+ * with '.' or '?' for unknown letters ("S.OP") matches answers of that
+ * length; other text matches answers containing its letters, or clues
+ * containing it. `exact` is the answer it names, for ranking.
  */
-export const searchLog = (records: readonly ClueRecord[], query: string): ClueRecord[] => {
+export const clueMatcher = (query: string): { test: (word: string, clue: string) => boolean; exact: string } | undefined => {
   const q = query.trim();
-  if (!q) return [...records].sort(byNewest);
+  if (!q) return undefined;
   if (/^[a-z.?]+$/i.test(q) && /[.?]/.test(q)) {
     const re = new RegExp(`^${q.toUpperCase().replace(/\?/g, '.')}$`);
-    return records.filter(r => re.test(r.word)).sort(byNewest);
+    return { test: word => re.test(word), exact: '' };
   }
   const letters = toLetters(q);
   const text = q.toLowerCase();
+  return { test: (word, clue) => (!!letters && word.includes(letters)) || clue.toLowerCase().includes(text), exact: letters };
+};
+
+/** search the log (see clueMatcher); exact answers first, then newest */
+export const searchLog = (records: readonly ClueRecord[], query: string): ClueRecord[] => {
+  const m = clueMatcher(query);
+  if (!m) return [...records].sort(byNewest);
   return records
-    .filter(r => (letters && r.word.includes(letters)) || r.clue.toLowerCase().includes(text))
-    .sort((a, b) => Number(b.word === letters) - Number(a.word === letters) || byNewest(a, b));
+    .filter(r => m.test(r.word, r.clue))
+    .sort((a, b) => Number(b.word === m.exact) - Number(a.word === m.exact) || byNewest(a, b));
 };

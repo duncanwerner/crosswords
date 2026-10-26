@@ -21,6 +21,8 @@ export interface EditorOptions {
   mode?: Mode;
   /** design mode only, as for a template: setMode('fill') is ignored */
   designOnly?: boolean;
+  /** start with this light selected, in fill mode (from a library search) */
+  light?: LightKey;
 }
 
 /**
@@ -53,10 +55,11 @@ export const createEditor = (initial: Puzzle, options: EditorOptions = {}) => {
 
   const hasLetters = initial.cells.some(c => c.letter);
   const designOnly = !!options.designOnly;
-  const [mode, setModeSignal] = createSignal<Mode>(designOnly ? 'design' : options.mode ?? (hasLetters ? 'fill' : 'design'));
+  const start = options.light && computeLights(initial).lights.find(l => l.key === options.light);
+  const [mode, setModeSignal] = createSignal<Mode>(designOnly ? 'design' : options.mode ?? (hasLetters || start ? 'fill' : 'design'));
 
   const firstWhite = Math.max(0, initial.cells.findIndex(c => !c.block));
-  const [selection, setSelection] = createSignal<Selection>({ cell: firstWhite, dir: 'across' });
+  const [selection, setSelection] = createSignal<Selection>(start ? { cell: start.cells[0], dir: start.dir } : { cell: firstWhite, dir: 'across' });
 
   /** a stats warning whose cells are flagged in the grid; follows the grid as it changes */
   const [flaggedKind, setFlaggedKind] = createSignal<WarningKind>();

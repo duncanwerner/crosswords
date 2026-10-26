@@ -1,5 +1,6 @@
 import { For, Show, createMemo, createSignal } from 'solid-js';
-import { type ImportResult, deletePuzzle, duplicatePuzzle, exportLibrary, exportPuzzle, importFile, library, loadPuzzle, markTemplate, newFromTemplate } from '../state/library';
+import { type SearchHit, searchPuzzles } from '../model/search';
+import { type ImportResult, deletePuzzle, duplicatePuzzle, exportLibrary, exportPuzzle, importFile, library, loadPuzzle, markTemplate, newFromTemplate, searchIndex } from '../state/library';
 import { openPuzzle, playPuzzle } from '../state/route';
 import { LIBRARY_SORTS, type LibrarySort, sortSummaries } from '../state/storage';
 import styles from './Library.module.css';
@@ -55,6 +56,35 @@ const SortSelect = (props: { value: LibrarySort; options: typeof LIBRARY_SORTS; 
   </label>
 );
 
+const SEARCH_LIMIT = 200;
+
+/** outside the component, so the search is still there on coming back from a result */
+const [query, setQuery] = createSignal('');
+
+const SearchResults = (props: { hits: SearchHit[] }) => (
+  <Show when={props.hits.length} fallback={<p class={styles.none}>No answers or clues match.</p>}>
+    <p class={styles.count}>
+      {props.hits.length > SEARCH_LIMIT ? `Showing the first ${SEARCH_LIMIT} of ${props.hits.length} matches` : plural(props.hits.length, 'match', 'matches')}
+    </p>
+    <ul class={styles.results}>
+      <For each={props.hits.slice(0, SEARCH_LIMIT)}>
+        {h => (
+          <li>
+            <button class={styles.hit} onClick={() => openPuzzle(h.puzzleId, h.key)} title="Open the puzzle at this clue">
+              <span class={styles.hitHead}>
+                <span class={styles.answer}>{h.answer.replace(/\./g, '·')}</span>
+                <span class={styles.enum}>{h.enumeration}</span>
+                <span class={styles.source}>{h.puzzleTitle || 'Untitled'} · {h.ref}</span>
+              </span>
+              <span class={[styles.clue, { [styles.unclued]: !h.clue }]}>{h.clue || 'No clue yet'}</span>
+            </button>
+          </li>
+        )}
+      </For>
+    </ul>
+  </Show>
+);
+
 export const Library = () => {
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal('');
@@ -73,6 +103,14 @@ export const Library = () => {
   };
   const templates = createMemo(() => sortSummaries(library.puzzles.filter(s => s.template), sorts().templates));
   const puzzles = createMemo(() => sortSummaries(library.puzzles.filter(s => !s.template), sorts().puzzles));
+  /** in the puzzles' sort order, so ties read like the cards */
+  const hits = createMemo(() => {
+    const q = query();
+    if (!q.trim()) return undefined;
+    const order = new Map(puzzles().map((s, i) => [s.id, i]));
+    const index = searchIndex().sort((a, b) => (order.get(a.puzzle.id) ?? 0) - (order.get(b.puzzle.id) ?? 0));
+    return searchPuzzles(index, q);
+  });
 
   const onImport = async () => {
     const file = fileInput.files?.[0];
@@ -141,76 +179,97 @@ export const Library = () => {
           </div>
         }
       >
-        <Show when={templates().length}>
-          <div class={styles.sectionHead}>
-            <h2 class={styles.section}>Templates</h2>
-            <Show when={templates().length > 1}>
-              <SortSelect value={sorts().templates} options={TEMPLATE_SORTS} label="Sort templates" onChange={sort => setSort('templates', sort)} />
-            </Show>
-          </div>
-          <div class={styles.grid}>
-            <For each={templates()} keyed={s => s.id}>
-              {s => (
-                <article class={[styles.card, styles.template]}>
-                  <button class={styles.open} onClick={() => openPuzzle(s().id)} title="Edit this template">
-                    <div class={styles.thumb}>
-                      <Thumbnail rows={s().rows} cols={s().cols} thumb={s().thumb} />
-                    </div>
-                    <h2 class={styles.title}>{s().title || 'Untitled'}</h2>
-                    <div class={styles.meta}>
-                      {s().rows}×{s().cols} · {s().style}
-                    </div>
-                  </button>
-                  <div class={styles.actions}>
-                    <button class="btn ghost" onClick={() => onNewFrom(s().id)} title="A new puzzle with this grid">New puzzle</button>
-                    <button class="btn ghost" onClick={() => markTemplate(s().id, false)} title="Move back to your puzzles">Unmark</button>
-                    <button class="btn ghost" onClick={() => onExport(s().id)}>Export</button>
-                    <button class="btn ghost danger" onClick={() => onDelete(s().id, s().title)}>Delete</button>
-                  </div>
-                </article>
-              )}
-            </For>
-          </div>
+        <div class={styles.search}>
+          <input
+            class="field"
+            type="search"
+            placeholder="Search answers and clues (S?OP for patterns)"
+            aria-label="Search every puzzle's answers and clues"
+            value={query()}
+            onInput={e => setQuery(e.currentTarget.value)}
+            onKeyDown={e => {
+              if (e.key === 'Escape') setQuery('');
+            }}
+          />
+          <Show when={query()}>
+            <button class={styles.clear} onClick={() => setQuery('')} aria-label="Clear the search" title="Clear the search">×</button>
+          </Show>
+        </div>
+        <Show when={hits()}>
+          {h => <SearchResults hits={h()} />}
         </Show>
-        <Show when={templates().length || puzzles().length > 1}>
-          <div class={styles.sectionHead}>
-            <h2 class={styles.section}>Puzzles</h2>
-            <Show when={puzzles().length > 1}>
-              <SortSelect value={sorts().puzzles} options={LIBRARY_SORTS} label="Sort puzzles" onChange={sort => setSort('puzzles', sort)} />
-            </Show>
-          </div>
-        </Show>
-        <Show when={puzzles().length} fallback={<p class={styles.none}>No puzzles yet. Start one from a template, or with New puzzle.</p>}>
-          <div class={styles.grid}>
-            <For each={puzzles()} keyed={s => s.id}>
-              {s => (
-                <article class={styles.card}>
-                  <button class={styles.open} onClick={() => openPuzzle(s().id)}>
-                    <div class={styles.thumb}>
-                      <Thumbnail rows={s().rows} cols={s().cols} thumb={s().thumb} />
+        <Show when={!hits()}>
+          <Show when={templates().length}>
+            <div class={styles.sectionHead}>
+              <h2 class={styles.section}>Templates</h2>
+              <Show when={templates().length > 1}>
+                <SortSelect value={sorts().templates} options={TEMPLATE_SORTS} label="Sort templates" onChange={sort => setSort('templates', sort)} />
+              </Show>
+            </div>
+            <div class={styles.grid}>
+              <For each={templates()} keyed={s => s.id}>
+                {s => (
+                  <article class={[styles.card, styles.template]}>
+                    <button class={styles.open} onClick={() => openPuzzle(s().id)} title="Edit this template">
+                      <div class={styles.thumb}>
+                        <Thumbnail rows={s().rows} cols={s().cols} thumb={s().thumb} />
+                      </div>
+                      <h2 class={styles.title}>{s().title || 'Untitled'}</h2>
+                      <div class={styles.meta}>
+                        {s().rows}×{s().cols} · {s().style}
+                      </div>
+                    </button>
+                    <div class={styles.actions}>
+                      <button class="btn ghost" onClick={() => onNewFrom(s().id)} title="A new puzzle with this grid">New puzzle</button>
+                      <button class="btn ghost" onClick={() => markTemplate(s().id, false)} title="Move back to your puzzles">Unmark</button>
+                      <button class="btn ghost" onClick={() => onExport(s().id)}>Export</button>
+                      <button class="btn ghost danger" onClick={() => onDelete(s().id, s().title)}>Delete</button>
                     </div>
-                    <h2 class={styles.title}>{s().title || 'Untitled'}</h2>
-                    <span
-                      class={[styles.status, { [styles.complete]: s().complete }]}
-                      title={s().complete ? 'Every square filled and every answer clued' : 'Some squares or clues still to do'}
-                    >
-                      {s().complete ? '✓ Complete' : 'Unfinished'}
-                    </span>
-                    <div class={styles.meta}>
-                      {s().rows}×{s().cols} · {s().style} · {ago(s().updated)}
+                  </article>
+                )}
+              </For>
+            </div>
+          </Show>
+          <Show when={templates().length || puzzles().length > 1}>
+            <div class={styles.sectionHead}>
+              <h2 class={styles.section}>Puzzles</h2>
+              <Show when={puzzles().length > 1}>
+                <SortSelect value={sorts().puzzles} options={LIBRARY_SORTS} label="Sort puzzles" onChange={sort => setSort('puzzles', sort)} />
+              </Show>
+            </div>
+          </Show>
+          <Show when={puzzles().length} fallback={<p class={styles.none}>No puzzles yet. Start one from a template, or with New puzzle.</p>}>
+            <div class={styles.grid}>
+              <For each={puzzles()} keyed={s => s.id}>
+                {s => (
+                  <article class={styles.card}>
+                    <button class={styles.open} onClick={() => openPuzzle(s().id)}>
+                      <div class={styles.thumb}>
+                        <Thumbnail rows={s().rows} cols={s().cols} thumb={s().thumb} />
+                      </div>
+                      <h2 class={styles.title}>{s().title || 'Untitled'}</h2>
+                      <span
+                        class={[styles.status, { [styles.complete]: s().complete }]}
+                        title={s().complete ? 'Every square filled and every answer clued' : 'Some squares or clues still to do'}
+                      >
+                        {s().complete ? '✓ Complete' : 'Unfinished'}
+                      </span>
+                      <div class={styles.meta}>
+                        {s().rows}×{s().cols} · {s().style} · {ago(s().updated)}
+                      </div>
+                    </button>
+                    <div class={styles.actions}>
+                      <button class="btn ghost" onClick={() => playPuzzle(s().id)} title="Solve this puzzle">Play</button>
+                      <button class="btn ghost" onClick={() => duplicatePuzzle(s().id)}>Duplicate</button>
+                      <button class="btn ghost" onClick={() => markTemplate(s().id, true)} title="Keep this grid for starting new puzzles">Make template</button>
+                      <button class="btn ghost" onClick={() => onExport(s().id)}>Export</button>
+                      <button class="btn ghost danger" onClick={() => onDelete(s().id, s().title)}>Delete</button>
                     </div>
-                  </button>
-                  <div class={styles.actions}>
-                    <button class="btn ghost" onClick={() => playPuzzle(s().id)} title="Solve this puzzle">Play</button>
-                    <button class="btn ghost" onClick={() => duplicatePuzzle(s().id)}>Duplicate</button>
-                    <button class="btn ghost" onClick={() => markTemplate(s().id, true)} title="Keep this grid for starting new puzzles">Make template</button>
-                    <button class="btn ghost" onClick={() => onExport(s().id)}>Export</button>
-                    <button class="btn ghost danger" onClick={() => onDelete(s().id, s().title)}>Delete</button>
-                  </div>
-                </article>
-              )}
-            </For>
-          </div>
+                  </article>
+                )}
+              </For>
+            </div>
+          </Show>
         </Show>
       </Show>
 
