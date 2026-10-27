@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { count, full, members } from './bitset';
-import { FLAG_ABBREVIATION, FLAG_PROPER, WordIndex } from './word-index';
+import { FLAG_ABBREVIATION, FLAG_PLURAL, FLAG_PROPER, WordIndex } from './word-index';
 
 const RAW = ['cat', 'cot', 'cut', 'act', 'Bill', 'bill', 'Paris', 'AOL', 'dog', 'smørrebrød', 'ox'];
 
@@ -60,5 +60,12 @@ describe('WordIndex', () => {
     expect(matches(index, 'C.T')).toEqual(['CAT', 'CUT']);
     index.setBlocked([]);
     expect(matches(index, 'C.T')).toEqual(['CAT', 'COT', 'CUT']);
+  });
+
+  it('flags plurals whose singular is a common word', () => {
+    const index = new WordIndex(['cats', 'cat', 'boxes', 'box', 'cities', 'city', 'pass', 'pas', 'its', 'it', 'bills', 'Bill', 'news', 'mars', 'Mar', 'aols', 'AOL']);
+    const plural = (w: string) => !!((index.flagsOf(w) ?? 0) & FLAG_PLURAL);
+    expect(['CATS', 'BOXES', 'CITIES', 'NEWS'].filter(plural)).toEqual(['CATS', 'BOXES', 'CITIES']);
+    expect(['PASS', 'ITS', 'MARS', 'AOLS', 'CAT'].some(plural)).toBe(false);
   });
 });

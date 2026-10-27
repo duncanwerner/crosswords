@@ -146,4 +146,26 @@ describe('Filler, required words', () => {
       expect(filler.bestFilled).toBe(0);
     }
   });
+
+  it('holds plurals back when asked', () => {
+    // one 4-letter light: two plurals and two other words to choose from
+    const grid = gridFrom(['....']);
+    const words = ['cat', 'cats', 'dogs', 'dog', 'cart', 'deer'];
+    const run = (plurals: 'any' | 'fewer' | 'last', seed: number) => {
+      const filler = new Filler(new WordIndex(words), {
+        rows: 1, cols: 4, shape: grid.cells, letters: '....', plurals, seed,
+      });
+      expect(filler.run(1000)).toBe('complete');
+      return filler.result('complete', 0).letters;
+    };
+    const seeds = Array.from({ length: 40 }, (_, i) => i + 1);
+    const plural = (w: string) => w === 'CATS' || w === 'DOGS';
+    expect(seeds.some(seed => plural(run('any', seed)))).toBe(true);
+    expect(seeds.every(seed => !plural(run('last', seed)))).toBe(true);
+    // with no other word, a plural still goes in
+    const filler = new Filler(new WordIndex(['cat', 'cats']), {
+      rows: 1, cols: 4, shape: grid.cells, letters: '....', plurals: 'last', seed: 1,
+    });
+    expect(filler.run(1000)).toBe('complete');
+  });
 });

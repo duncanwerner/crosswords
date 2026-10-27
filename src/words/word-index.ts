@@ -15,6 +15,19 @@ export const FLAG_PROPER = 1;
 export const FLAG_ABBREVIATION = 2;
 /** from your own word list */
 export const FLAG_MINE = 4;
+/** ends in S and its singular (less S, ES, or IES for Y) is a common word */
+export const FLAG_PLURAL = 8;
+
+const COMMON = FLAG_PROPER | FLAG_ABBREVIATION;
+
+/** the singulars a word ending in S might come from; three letters at least, so HIS and ITS aren't plurals */
+const singulars = (word: string) => {
+  if (word.length < 4 || !word.endsWith('S') || word.endsWith('SS')) return [];
+  const list = [word.slice(0, -1)];
+  if (word.endsWith('ES') && word.length > 4) list.push(word.slice(0, -2));
+  if (word.endsWith('IES') && word.length > 5) list.push(`${word.slice(0, -3)}Y`);
+  return list;
+};
 
 /**
  * how your own words mix with the dictionary: only yours, yours ahead of
@@ -85,6 +98,9 @@ export class WordIndex {
     }
     for (const word of mine) if (word) merged.set(word, FLAG_MINE);
     this.mineCount = new Set(mine.filter(Boolean)).size;
+    for (const [word, flags] of merged) {
+      if (singulars(word).some(s => merged.has(s) && !(merged.get(s)! & COMMON))) merged.set(word, flags | FLAG_PLURAL);
+    }
 
     const byLength = new Map<number, string[]>();
     for (const word of merged.keys()) {

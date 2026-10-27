@@ -3,17 +3,23 @@ import { parseWordList } from '../../model/puzzle';
 import { EditorContext } from '../../state/editor';
 import { DICTIONARIES, MINE_MODES, myList, settings } from '../../state/words';
 import { words } from '../../words/client';
-import type { FillResult } from '../../words/fill';
+import type { FillResult, PluralMode } from '../../words/fill';
 import type { FillProgress } from '../../words/protocol';
 import { BlockButton, DictionaryGate, type ToolProps } from './common';
 import styles from './tools.module.css';
 import fill from './FillTool.module.css';
 
 const TIME_LIMITS = [5, 15, 30, 60];
+const PLURAL_MODES: Array<{ value: PluralMode; label: string }> = [
+  { value: 'any', label: 'Any' },
+  { value: 'fewer', label: 'Fewer' },
+  { value: 'last', label: 'Last resort' },
+];
 
 // options persist across puzzles for the session
 const [timeLimit, setTimeLimit] = createSignal(15);
 const [replaceAuto, setReplaceAuto] = createSignal(true);
+const [plurals, setPlurals] = createSignal<PluralMode>('any');
 
 type State =
   | { kind: 'idle' }
@@ -164,6 +170,7 @@ export const FillTool = (props: ToolProps) => {
         shape: cells.map(c => ({ block: c.block, barRight: c.barRight, barBottom: c.barBottom })),
         letters,
         required: ed.required(),
+        plurals: plurals(),
         seed: (Math.random() * 2 ** 31) | 0,
         timeMs: timeLimit() * 1000,
         blocked: ed.blocked(),
@@ -239,6 +246,12 @@ export const FillTool = (props: ToolProps) => {
           Time limit
           <select class="field" aria-label="Time limit" value={timeLimit()} onChange={e => setTimeLimit(+e.currentTarget.value)}>
             <For each={TIME_LIMITS}>{t => <option value={t}>{t} s</option>}</For>
+          </select>
+        </label>
+        <label class={styles.label} title="Plurals are words ending in S whose singular is also in the dictionary. Fewer makes them less likely; Last resort uses one only when nothing else fits">
+          Plurals
+          <select class="field" aria-label="Plurals" value={plurals()} onChange={e => setPlurals(e.currentTarget.value as PluralMode)}>
+            <For each={PLURAL_MODES}>{m => <option value={m.value}>{m.label}</option>}</For>
           </select>
         </label>
         <Show when={ed.autoFilled()}>

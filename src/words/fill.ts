@@ -1,7 +1,7 @@
 import { type GridShape, computeLights } from '../model/lights';
 import type { Light, LightKey } from '../model/types';
 import { count, countAnd, members } from './bitset';
-import { FLAG_MINE, type WordIndex } from './word-index';
+import { FLAG_MINE, FLAG_PLURAL, type WordIndex } from './word-index';
 
 /**
  * grid auto-fill as constraint search:
@@ -11,6 +11,8 @@ import { FLAG_MINE, type WordIndex } from './word-index';
  *    with no words is skipped (forward checking);
  *  - when your own words are preferred, every one that fits a light is
  *    tried (in score order) before any dictionary word;
+ *  - plurals can be held back: scored down, or tried only after every
+ *    other word;
  *  - no duplicate words; blocked words never appear (the index handles it);
  *  - required words are placed first, each in whichever light of its
  *    length suits the crossings best. they needn't be in the dictionary,
@@ -31,8 +33,13 @@ export interface FillInput {
   letters: string;
   /** words the fill must include (uppercase A-Z, distinct), each in one light */
   required?: string[];
+  /** how plurals compete with other words (default 'any') */
+  plurals?: PluralMode;
   seed: number;
 }
+
+/** plurals on equal terms, scored down, or tried after every other word */
+export type PluralMode = 'any' | 'fewer' | 'last';
 
 export type FillStatus = 'complete' | 'partial' | 'impossible' | 'cancelled';
 
@@ -61,6 +68,9 @@ const EMPTY = 0;
  * bits behind another is e times less likely to be tried before it
  */
 const TEMPERATURE = 1.5;
+
+/** score bits a plural loses with plurals 'fewer': it goes ahead of an equal word about 1 time in 15 */
+const PLURAL_PENALTY = 4;
 
 /** small, seedable PRNG (mulberry32) */
 const random = (seed: number) => () => {
@@ -112,6 +122,7 @@ export class Filler {
   protected readonly initialUsed: Set<string>;
   protected stack: Frame[] = [];
   protected readonly required: string[];
+  protected readonly plurals: PluralMode;
 
   protected rand: () => number;
   protected failures: Uint32Array;
@@ -166,6 +177,7 @@ export class Filler {
     this.used = new Set(this.initialUsed);
     this.total = this.lights.length - this.initialAssigned.reduce((a, b) => a + b, 0);
     this.required = [...new Set(input.required ?? [])];
+    this.plurals = input.plurals ?? 'any';
 
     this.rand = random(input.seed);
     this.failures = new Uint32Array(this.lights.length);
@@ -302,15 +314,19 @@ export class Filler {
     if (!m) return [];
     const checks = this.crossChecks(li);
     const mineFirst = this.index.mineFirst;
-    const scored: Array<Option & { score: number; mine: number }> = [];
+    const scored: Array<Option & { score: number; mine: number; plural: number }> = [];
     for (const i of members(m.set)) {
       const word = m.bucket.words[i];
       if (this.used.has(word)) continue;
-      const score = this.score(word, checks);
-      const mine = mineFirst && m.bucket.flags[i] & FLAG_MINE ? 1 : 0;
-      if (score !== undefined) scored.push({ light: li, word, score, mine });
+      let score = this.score(word, checks);
+      if (score === undefined) continue;
+      const flags = m.bucket.flags[i];
+      const mine = mineFirst && flags & FLAG_MINE ? 1 : 0;
+      const plural = flags & FLAG_PLURAL ? 1 : 0;
+      if (plural && this.plurals === 'fewer') score -= PLURAL_PENALTY;
+      scored.push({ light: li, word, score, mine, plural: this.plurals === 'last' ? plural : 0 });
     }
-    scored.sort((a, b) => b.mine - a.mine || b.score - a.score);
+    scored.sort((a, b) => b.mine - a.mine || a.plural - b.plural || b.score - a.score);
     return scored;
   }
 
