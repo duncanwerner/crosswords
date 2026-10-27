@@ -12,6 +12,8 @@ export interface AnagramRequest {
   letters: string;
   maxWords: number;
   minLength: number;
+  /** also allow SHORT_WORDS below minLength, at most one per phrase */
+  shortWords?: boolean;
   /** max phrases (letter-group combinations) to return */
   limit: number;
   /** stop searching after this long, returning what was found */
@@ -32,12 +34,21 @@ export interface AnagramResult {
   mine: string[];
 }
 
+/** very common little words, worth having in phrases whatever the minimum length */
+export const SHORT_WORDS = [
+  'A', 'I', 'O',
+  'AM', 'AN', 'AS', 'AT', 'BE', 'BY', 'DO', 'GO', 'HE', 'HI', 'IF', 'IN', 'IS', 'IT',
+  'ME', 'MY', 'NO', 'OF', 'OH', 'ON', 'OR', 'SO', 'TO', 'UP', 'US', 'WE',
+];
+
 const A = 65;
 
 interface Group {
   sig: string;
   codes: Uint8Array;
   words: string[];
+  /** shorter than the minimum length: a short word */
+  short: boolean;
 }
 
 const signature = (word: string) => word.split('').sort().join('');
@@ -55,30 +66,39 @@ export const anagrams = (index: WordIndex, req: AnagramRequest): AnagramResult =
   const bySig = new Map<string, Group>();
   const mine = new Set<string>();
   const scratch = new Int16Array(26);
+  const fits = (word: string) => {
+    scratch.set(target);
+    for (let j = 0; j < word.length; j++) if (--scratch[word.charCodeAt(j) - A] < 0) return false;
+    return true;
+  };
+  const add = (word: string) => {
+    const sig = signature(word);
+    const group = bySig.get(sig);
+    if (group) group.words.push(word);
+    else {
+      const codes = new Uint8Array(word.length);
+      for (let j = 0; j < word.length; j++) codes[j] = sig.charCodeAt(j) - A;
+      bySig.set(sig, { sig, codes, words: [word], short: word.length < req.minLength });
+    }
+  };
   for (const bucket of index.buckets.values()) {
     if (bucket.length > n || bucket.length < req.minLength) continue;
     for (const i of members(bucket.allowed)) {
       const word = bucket.words[i];
-      scratch.set(target);
-      let fits = true;
-      for (let j = 0; j < word.length; j++) {
-        if (--scratch[word.charCodeAt(j) - A] < 0) {
-          fits = false;
-          break;
-        }
-      }
-      if (!fits) continue;
+      if (!fits(word)) continue;
       if (bucket.flags[i] & FLAG_MINE) mine.add(word);
-      const sig = signature(word);
-      const group = bySig.get(sig);
-      if (group) group.words.push(word);
-      else {
-        const codes = new Uint8Array(word.length);
-        for (let j = 0; j < word.length; j++) codes[j] = sig.charCodeAt(j) - A;
-        bySig.set(sig, { sig, codes, words: [word] });
-      }
+      add(word);
     }
   }
+  // short words needn't be in the dictionary, but blocking one still counts
+  if (req.shortWords) {
+    for (const word of SHORT_WORDS) {
+      if (word.length < req.minLength && word.length <= n && fits(word) && !index.isBlocked(word)) add(word);
+    }
+  }
+  /** the shortest word allowed at all */
+  let shortest = req.minLength;
+  for (const g of bySig.values()) shortest = Math.min(shortest, g.codes.length);
 
   // longest first; combinations only ever step forward through this list,
   // so each set of groups is found once, in longest-first order
@@ -89,6 +109,8 @@ export const anagrams = (index: WordIndex, req: AnagramRequest): AnagramResult =
   const remaining = target.slice();
   const combo: Group[] = [];
   let steps = 0;
+  /** a phrase has at most one short word */
+  let shortUsed = false;
 
   const remainderSig = () => {
     let s = '';
@@ -126,19 +148,27 @@ export const anagrams = (index: WordIndex, req: AnagramRequest): AnagramResult =
     }
     if (k === 1) {
       // the last word must use exactly what's left: one lookup, no loop
-      if (left < req.minLength) return true;
+      if (left < (shortUsed ? req.minLength : shortest)) return true;
       const i = position.get(remainderSig());
-      if (i !== undefined && i >= start) emit([...combo, groups[i]]);
+      if (i !== undefined && i >= start && !(shortUsed && groups[i].short)) emit([...combo, groups[i]]);
       return true;
     }
     for (let i = start; i < groups.length; i++) {
       const g = groups[i];
-      // the remaining k-1 words are each no longer than this one, and at least minLength
+      // the remaining k-1 words are each no longer than this one, and at least
+      // minLength, but for one short word if none is used yet
       if (g.codes.length * k < left) break;
-      if (left - g.codes.length < (k - 1) * req.minLength) continue;
+      // short words come last, so once one is used the rest won't do
+      if (g.short && shortUsed) break;
+      const used = shortUsed || g.short;
+      const least = used ? (k - 1) * req.minLength : (k - 2) * req.minLength + shortest;
+      if (left - g.codes.length < least) continue;
       if (!take(g)) continue;
       combo.push(g);
+      const before = shortUsed;
+      shortUsed = used;
       const go = search(k - 1, i, left - g.codes.length);
+      shortUsed = before;
       combo.pop();
       give(g);
       if (!go) return false;

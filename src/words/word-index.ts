@@ -172,6 +172,11 @@ export class WordIndex {
     this.applyBlocked();
   }
 
+  /** a word is on the block list (uppercase A-Z) */
+  isBlocked(word: string) {
+    return this.blocked.includes(word);
+  }
+
   protected applyBlocked() {
     for (const bucket of this.buckets.values()) bucket.allowed = bucket.base;
     for (const word of this.blocked) {

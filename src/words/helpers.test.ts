@@ -35,6 +35,21 @@ describe('anagrams', () => {
     expect(r.truncated).toBe(true);
   });
 
+  it('allows one short word below the minimum length', () => {
+    const short = (letters: string, maxWords = 3) =>
+      anagrams(index, { letters, maxWords, minLength: 3, shortWords: true, limit: 100 }).items.map(a => a.parts.map(p => p.join('/')).join(' '));
+    // IS is in the dictionary and the short list; TO only in the short list
+    expect(short('LISTEN')).toContain('LENT IS');
+    expect(short('LISTENTO')).toContain('ENLIST/INLETS/LISTEN/SILENT/TINSEL TO');
+    // never two short words in a phrase
+    expect(short('LISTENIS')).not.toContain('LENT IS IS');
+    expect(short('LISTENA', 2)).toContain('ENLIST/INLETS/LISTEN/SILENT/TINSEL A');
+    // blocked short words stay out
+    const blocked = new WordIndex(['lent']);
+    blocked.setBlocked(['IS']);
+    expect(anagrams(blocked, { letters: 'LENTIS', maxWords: 2, minLength: 3, shortWords: true, limit: 100 }).items).toEqual([]);
+  });
+
   it('returns nothing for letters with no anagram', () => {
     expect(phrases('QQQ')).toEqual([]);
   });

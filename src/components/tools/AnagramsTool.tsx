@@ -2,7 +2,7 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, useCo
 import { toLetters } from '../../model/ascii';
 import { EditorContext } from '../../state/editor';
 import { status } from '../../state/words';
-import type { AnagramResult } from '../../words/anagrams';
+import { type AnagramResult, SHORT_WORDS } from '../../words/anagrams';
 import { words } from '../../words/client';
 import { BlockButton, CopyStatus, DictionaryGate, type ToolProps, createCopier, latestOnly } from './common';
 import styles from './tools.module.css';
@@ -13,6 +13,7 @@ const NUMBER_WORDS = ['', 'Single words', 'Two words', 'Three words', 'Four word
 // options persist across puzzles for the session
 const [maxWords, setMaxWords] = createSignal(3);
 const [minLength, setMinLength] = createSignal(3);
+const [shortWords, setShortWords] = createSignal(true);
 
 /** typed letters, tied to the light they were typed for */
 const [override, setOverride] = createSignal<{ key: string | undefined; text: string }>();
@@ -47,11 +48,11 @@ export const AnagramsTool = (props: ToolProps) => {
 
   const run = latestOnly();
   createEffect(
-    () => ({ l: letters(), m: maxWords(), n: minLength(), active: props.active, s: status(), blocked: ed.blocked() }),
-    ({ l, m, n, active, s, blocked }) => {
+    () => ({ l: letters(), m: maxWords(), n: minLength(), short: shortWords(), active: props.active, s: status(), blocked: ed.blocked() }),
+    ({ l, m, n, short, active, s, blocked }) => {
       if (!active || !l || s.state !== 'ready') return;
       run(
-        () => words.anagrams({ letters: l, maxWords: m, minLength: n, limit: LIMIT, budgetMs: 2000, blocked }),
+        () => words.anagrams({ letters: l, maxWords: m, minLength: n, shortWords: short, limit: LIMIT, budgetMs: 2000, blocked }),
         r => {
           setError('');
           setResult(r);
@@ -101,6 +102,10 @@ export const AnagramsTool = (props: ToolProps) => {
           <select class="field" aria-label="Minimum word length" value={minLength()} onChange={e => setMinLength(+e.currentTarget.value)}>
             <For each={[2, 3, 4]}>{n => <option value={n}>{n} letters</option>}</For>
           </select>
+        </label>
+        <label class={styles.label} title={`Allow one of these in a phrase, whatever the minimum: ${SHORT_WORDS.join(' ')}`}>
+          <input type="checkbox" checked={shortWords()} onChange={e => setShortWords(e.currentTarget.checked)} />
+          Short words
         </label>
       </div>
       <div class={styles.info}>
