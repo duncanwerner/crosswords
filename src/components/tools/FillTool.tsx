@@ -16,10 +16,33 @@ const PLURAL_MODES: Array<{ value: PluralMode; label: string }> = [
   { value: 'last', label: 'Last resort' },
 ];
 
-// options persist across puzzles for the session
+const PLURALS_KEY = 'cross:fill-plurals';
+
+/** a per-browser preference, not library data */
+const readPlurals = (): PluralMode => {
+  try {
+    const raw = localStorage.getItem(PLURALS_KEY);
+    return PLURAL_MODES.find(m => m.value === raw)?.value ?? 'any';
+  }
+  catch {
+    return 'any';
+  }
+};
+
+// options persist across puzzles for the session; plurals across reloads too
 const [timeLimit, setTimeLimit] = createSignal(15);
 const [replaceAuto, setReplaceAuto] = createSignal(true);
-const [plurals, setPlurals] = createSignal<PluralMode>('any');
+const [plurals, setPluralsSignal] = createSignal<PluralMode>(readPlurals());
+
+const setPlurals = (mode: PluralMode) => {
+  setPluralsSignal(mode);
+  try {
+    localStorage.setItem(PLURALS_KEY, mode);
+  }
+  catch {
+    // preference only
+  }
+};
 
 type State =
   | { kind: 'idle' }
